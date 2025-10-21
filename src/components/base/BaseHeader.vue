@@ -27,7 +27,7 @@ const helpForm = ref({
 
 // const helpSections = [
 //   { value: "login", label: "Accesso / Login" },
-//   { value: "flussi", label: "Gestione Flussi" },
+//   { value: "flussi", label: "Net configuration" },
 //   { value: "invii", label: "Invii/Ritorni" },
 //   { value: "dashboard", label: "Dashboard" },
 //   { value: "altro", label: "Altro" },

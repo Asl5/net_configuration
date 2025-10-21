@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen h-dvh w-full flex flex-col bg-gray-50">
-    <BaseHeader title="Gestione Flussi Invio/Ritorno" />
+    <BaseHeader title="Net configuration Invio/Ritorno" />
 
     <div class="flex flex-1 min-h-0 overflow-hidden">
       <!-- Colonna sinistra: lista flussi -->

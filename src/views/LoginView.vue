@@ -4,7 +4,7 @@
     <div class="w-full max-w-md">
       <div class="bg-white shadow-2xl rounded-xl overflow-hidden transition-all duration-500" :class="successAnim ? 'scale-95 opacity-0 ring-2 ring-emerald-500 ring-offset-2 ring-offset-white' : ''">
       <div class="px-4 sm:px-6 py-4 flex flex-col gap-2 items-center text-center"><img src="@/assets/logo.png" alt="Logo" class="w-auto bg-white rounded-md" />
-           <BaseLabel as="h1" text="GESTIONE FLUSSI" size="2xl" weight="bold" text-color="text-blue-800"   />
+           <BaseLabel as="h1" text="Net configuration" size="2xl" weight="bold" text-color="text-blue-800"   />
 
           <!-- <BaseLabel
             as="p"

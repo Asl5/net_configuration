@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen h-dvh w-full flex flex-col bg-gray-50">
-    <BaseHeader title="Gestione Flussi" />
+    <BaseHeader title="Net configuration" />
     <div class="flex flex-1 min-h-0 overflow-hidden">
       <!-- Sidebar nascosta su mobile -->
       <aside class="hidden md:flex md:w-64 border-r overflow-y-auto bg-white md:flex-col">
