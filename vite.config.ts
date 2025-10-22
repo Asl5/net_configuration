@@ -15,5 +15,14 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
-  },
+  }, server: {
+    proxy: {
+      '/db-gateway-api': {
+        target: 'https://10.105.250.146:8081',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  }
 })
+

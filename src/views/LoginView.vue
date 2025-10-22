@@ -110,10 +110,16 @@ async function onSubmit() {
   loading.value = true;
   try {
     const { access_token } = await loginRequest(email.value, password.value);
+    console.log("wegwer")
     setToken(access_token);
     const rights = useRightsStore();
     await rights.bootstrap(email.value);
-
+    // Se non ha diritti, non entra
+    if ((!rights.generalRoles || rights.generalRoles.length === 0) && (!rights.rights || rights.rights.length === 0)) {
+      rights.clear();
+      errors.form = "Utente senza diritti. Accesso negato.";
+      return;
+    }
     await nextTick();
     setTimeout(() => {
       const redirect = route.query.redirect ? String(route.query.redirect) : "/dashboard-count";
@@ -126,7 +132,6 @@ async function onSubmit() {
   }
 }
 </script>
-
 
 
 

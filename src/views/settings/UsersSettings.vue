@@ -59,8 +59,16 @@
         <div v-if="selectedUser" class="w-full space-y-6">
           <div class="w-full bg-white rounded-lg shadow p-4 md:p-6 space-y-4">
             <div class="flex items-center justify-between">
-              <h2 class="text-lg font-semibold text-gray-800">{{ selectedUser.nome }}</h2>
+              <h2 class="text-lg font-semibold text-gray-800">
+                {{ selectedUser.nome }} {{ selectedUser.cognome }}
+              </h2>
               <BaseButton variant="danger" size="sm" @click="onClickDeleteUser">Elimina</BaseButton>
+            </div>
+            <!-- Dati base -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <BaseInput v-model="selectedUser.matricola" label="Matricola" disabled />
+              <BaseInput v-model="selectedUser.nome" label="Nome" />
+              <BaseInput v-model="selectedUser.cognome" label="Cognome" />
             </div>
             <!-- Ruolo -->
             <div class="flex flex-col sm:flex-row gap-4">
@@ -74,56 +82,6 @@
                 :clearable="true"
                 wrapperClass="w-full sm:w-56"
               />
-            </div>
-
-            <!-- Permessi per flusso -->
-            <div>
-              <h3 class="font-medium mb-2 text-gray-700">Permessi per flusso</h3>
-              <div class="overflow-x-auto bg-white rounded-lg shadow">
-                <table class="min-w-full text-sm table-fixed">
-                  <thead>
-                    <tr class="bg-gray-100 text-gray-700 font-bold">
-                      <th
-                        class="px-2 py-2 text-left font-semibold sticky left-0 bg-gray-100 z-10 min-w-[160px] w-[160px]"
-                      >
-                        Flusso
-                      </th>
-                      <th
-                        v-for="perm in flowPermissions"
-                        :key="perm.id"
-                        class="px-2 py-2 text-center font-semibold align-top w-[120px] min-w-[120px] whitespace-normal break-words leading-snug"
-                      >
-                        {{ perm.descrizione_lunga }}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y">
-                    <tr v-for="flow in flows" :key="flow.id">
-                      <td
-                        class="px-2 py-2 text-gray-700 align-top sticky left-0 bg-white z-10 min-w-[160px] w-[160px]"
-                      >
-                        <div class="min-w-[160px]">
-                          {{ flow.nome }}
-                          <div class="text-xs text-gray-500">({{ flow.descrizioneLunga }})</div>
-                        </div>
-                      </td>
-                      <td
-                        v-for="perm in flowPermissions"
-                        :key="perm.id"
-                        class="px-2 py-2 text-center align-middle w-[120px] min-w-[120px] whitespace-normal break-words"
-                      >
-                        <BaseCheckBox
-                          v-model="rightsByFlow[flow.id]"
-                          :option="{ id: perm.id, label: perm.descrizione_lunga }"
-                          :exclusive="true"
-                          no-label
-                          @update:modelValue="onPermChange(flow.id)"
-                        />
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
             </div>
 
             <!-- Azioni -->
@@ -152,68 +110,36 @@
 
           <!-- Nome + Matricola -->
           <div class="flex flex-col md:flex-row gap-4 mb-6">
+
+            <BaseInput
+              v-model="newUser.nome"
+              label="Nome"
+              placeholder="Matricola"
+              class="w-full md:w-full"
+            />
+            <BaseInput
+              v-model="newUser.cognome"
+              label="Cognome"
+              placeholder="Matricola"
+              class="w-full md:w-full"
+            />
+          </div>
+
+          <!-- Campi base soltanto: matricola, ruolo -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <BaseInput
               v-model="newUser.matricola"
               label="Matricola"
               placeholder="Matricola"
               class="w-full md:w-full"
             />
-            <!-- Ruolo -->
             <BaseSelect
               v-model="newUser.roleId"
               :options="roleOptions"
               label="Ruolo"
               placeholder="Seleziona ruolo"
-              class="w-full md:w-80"
+              class="w-full md:w-full"
             />
-          </div>
-
-          <!-- Permessi per flusso (come lista principale) -->
-          <h3 class="font-medium mb-2 text-gray-700">Permessi per flusso</h3>
-          <div class="overflow-x-auto bg-white rounded-lg shadow">
-            <table class="min-w-full text-sm table-fixed">
-              <thead>
-                <tr class="bg-gray-100 text-gray-700 font-bold">
-                  <th
-                    class="px-2 py-2 text-left font-semibold sticky left-0 bg-gray-100 z-10 min-w-[160px] w-[160px]"
-                  >
-                    Flusso
-                  </th>
-                  <th
-                    v-for="perm in flowPermissions"
-                    :key="perm.id"
-                    class="px-2 py-2 text-center font-semibold align-top w-[50px] min-w-[50px] whitespace-normal break-words leading-snug"
-                  >
-                    {{ perm.descrizione_lunga }}
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="divide-y">
-                <tr v-for="flow in flows" :key="flow.id">
-                  <td
-                    class="px-2 py-2 text-gray-700 align-top sticky left-0 bg-white z-10 min-w-[160px] w-[160px]"
-                  >
-                    <div class="min-w-[160px]">
-                      {{ flow.nome }}
-                      <div class="text-xs text-gray-500">({{ flow.descrizioneLunga }})</div>
-                    </div>
-                  </td>
-                  <td
-                    v-for="perm in flowPermissions"
-                    :key="perm.id"
-                    class="px-2 py-2 text-center align-middle w-[50px] min-w-[50px] whitespace-normal break-words"
-                  >
-                    <BaseCheckBox
-                      v-model="rightsByFlowNew[flow.id]"
-                      :option="{ id: perm.id, label: perm.descrizione_lunga }"
-                      :exclusive="true"
-                      no-label
-                      @update:modelValue="onPermChange(flow.id)"
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
           </div>
 
           <!-- Bottoni -->
@@ -273,11 +199,22 @@ import BaseHeader from "@/components/base/BaseHeader.vue";
 import BaseSelect from "@/components/base/BaseSelect.vue";
 import BaseButton from "@/components/base/BaseButton.vue";
 import BaseInput from "@/components/base/BaseInput.vue";
-import BaseCheckBox from "@/components/base/BaseCheckBox.vue";
+// import BaseCheckBox from "@/components/base/BaseCheckBox.vue";
 import BaseModalAlert from "@/components/base/BaseModalAlert.vue";
 import { useRightsStore } from "@/stores/rights";
 import { getDeviceName } from "@/utils/utils";
-import { apiAddUser, apiSaveUserRole, apiDeleteUser, apiLoadRoles, apiLoadUsers, apiLoadFlows, apiLoadFlowPermissions, apiBatchInsertUserRights, apiBatchUpdateUserRights } from "@/services/api";
+import {
+  apiAddUser,
+  apiSaveUserRole,
+  apiDeleteUser,
+  apiLoadRoles,
+  // apiLoadUsers,
+  // apiLoadFlows,
+  // apiLoadFlowPermissions,
+  apiBatchInsertUserRights,
+  apiBatchUpdateUserRights,
+  apiLoadUsers,
+} from "@/services/api";
 
 const rightsStore = useRightsStore();
 
@@ -314,16 +251,17 @@ const showConfirmModal = ref(false);
 const showErrorModal = ref(false);
 const rightsByFlowNew = reactive<Record<number, number[]>>({});
 // Traccia l\'ultimo flusso su cui l\'utente ha toccato un permesso
-const lastTouchedFlowId = ref<number | null>(null);
+// const lastTouchedFlowId = ref<number | null>(null);
 /* ================== Ruoli (query 7) ================== */
 const roleOptions = ref<{ value: number; label: string; descrizioneLunga: string }[]>([]);
 const roleLoading = ref(false);
-const userStore = useRightsStore();
-const userMatricola = userStore.matricola;
+// const userStore = useRightsStore();
+// const userMatricola = userStore.matricola
 async function loadRoles() {
   roleLoading.value = true;
   try {
     const { data } = await apiLoadRoles();
+    console.log(data)
     const rows = Array.isArray(data?.rows) ? data.rows : [];
     roleOptions.value = rows.map((r: any) => ({
       value: r.ID,
@@ -337,40 +275,40 @@ async function loadRoles() {
   }
 }
 
-// Carica utenti via queryId 6 e poi ricarica ruoli, flussi, permessi
-async function reloadUsersViaQuery6() {
-  try {
-    const { data } = await apiLoadUsers();
-    const rows = Array.isArray(data?.rows) ? data.rows : [];
+// // Carica utenti via queryId 6 e poi ricarica ruoli, flussi, permessi
+// async function reloadUsersViaQuery6() {
+//   try {
+//     const { data } = await apiLoadUsers();
+//     const rows = Array.isArray(data?.rows) ? data.rows : [];
 
-    const map = new Map<string, any>();
-    rows.forEach((r: any) => {
-      const key = r.MATRICOLA;
-      if (!map.has(key)) {
-        map.set(key, {
-          matricola: r.MATRICOLA,
-          nome: r.MATRICOLA, // TODO: usa campo nome reale se disponibile
-          roleId: r.ID_DIRITTO ?? null,
-          flowPerms: {},
-        });
-      }
-      const user = map.get(key);
-      if (r.ID_FLUSSO) {
-        if (!user.flowPerms[r.ID_FLUSSO]) user.flowPerms[r.ID_FLUSSO] = [];
-        if (r.ID_DIRITTO_FLUSSO && !user.flowPerms[r.ID_FLUSSO].includes(r.ID_DIRITTO_FLUSSO)) {
-          user.flowPerms[r.ID_FLUSSO].push(r.ID_DIRITTO_FLUSSO);
-        }
-      }
-    });
-    users.value = Array.from(map.values());
+//     const map = new Map<string, any>();
+//     rows.forEach((r: any) => {
+//       const key = r.MATRICOLA;
+//       if (!map.has(key)) {
+//         map.set(key, {
+//           matricola: r.MATRICOLA,
+//           nome: r.MATRICOLA, // TODO: usa campo nome reale se disponibile
+//           roleId: r.ID_DIRITTO ?? null,
+//           flowPerms: {},
+//         });
+//       }
+//       const user = map.get(key);
+//       if (r.ID_FLUSSO) {
+//         if (!user.flowPerms[r.ID_FLUSSO]) user.flowPerms[r.ID_FLUSSO] = [];
+//         if (r.ID_DIRITTO_FLUSSO && !user.flowPerms[r.ID_FLUSSO].includes(r.ID_DIRITTO_FLUSSO)) {
+//           user.flowPerms[r.ID_FLUSSO].push(r.ID_DIRITTO_FLUSSO);
+//         }
+//       }
+//     });
+//     users.value = Array.from(map.values());
 
-    await loadRoles();
-    await loadFlows();
-    await loadFlowPermissions();
-  } catch (err) {
-    console.error("Errore inizializzazione pagina:", err);
-  }
-}
+//     await loadRoles();
+//     await loadFlows();
+//     await loadFlowPermissions();
+//   } catch (err) {
+//     console.error("Errore inizializzazione pagina:", err);
+//   }
+// }
 
 function confirmUserSwitch() {
   showUnsavedModal.value = false;
@@ -387,45 +325,46 @@ function confirmUserSwitch() {
 
 /* ================== Flussi (query 8) ================== */
 const flows = ref<{ id: number; nome: string; descrizioneLunga: string }[]>([]);
-async function loadFlows() {
-  try {
-    const { data } = await apiLoadFlows(userMatricola!);
-    console.log("data",data)
-    const rows = Array.isArray(data?.rows) ? data.rows : [];
-    flows.value = rows.map((r: any) => ({
-      id: r.ID_FLUSSO,
-      nome: r.DESCRIZIONE_FLUSSO,
-      descrizioneLunga: r.DESCRIZIONE_FLUSSO_LUN,
-    }));
-    console.log("flows",flows.value)
-  } catch (err) {
-    console.error("Errore caricamento flussi:", err);
-  }
-}
+// async function loadFlows() {
+//   try {
+//     const { data } = await apiLoadFlows(userMatricola!);
+//     console.log("data", data);
+//     const rows = Array.isArray(data?.rows) ? data.rows : [];
+//     flows.value = rows.map((r: any) => ({
+//       id: r.ID_FLUSSO,
+//       nome: r.DESCRIZIONE_FLUSSO,
+//       descrizioneLunga: r.DESCRIZIONE_FLUSSO_LUN,
+//     }));
+//     console.log("flows", flows.value);
+//   } catch (err) {
+//     console.error("Errore caricamento flussi:", err);
+//   }
+// }
 
 /* ================== Permessi flusso (query 9) ================== */
-const flowPermissions = ref<{ id: number; descrizione: string; descrizione_lunga: string }[]>([]);
-async function loadFlowPermissions() {
-  try {
-    const { data } = await apiLoadFlowPermissions();
-    const rows = Array.isArray(data?.rows) ? data.rows : [];
-    flowPermissions.value = rows.map((r: any) => ({
-      id: r.ID,
-      descrizione: r.DESCRIZIONE,
-      descrizione_lunga: r.DESCRIZIONE_LUNGA,
-    }));
-  } catch (err) {
-    console.error("Errore caricamento permessi flusso:", err);
-  }
-}
+// const flowPermissions = ref<{ id: number; descrizione: string; descrizione_lunga: string }[]>([]);
+// async function loadFlowPermissions() {
+//   try {
+//     const { data } = await apiLoadFlowPermissions();
+//     const rows = Array.isArray(data?.rows) ? data.rows : [];
+//     flowPermissions.value = rows.map((r: any) => ({
+//       id: r.ID,
+//       descrizione: r.DESCRIZIONE,
+//       descrizione_lunga: r.DESCRIZIONE_LUNGA,
+//     }));
+//   } catch (err) {
+//     console.error("Errore caricamento permessi flusso:", err);
+//   }
+// }
 
 /* ================== Aggiungi utente ================== */
 const showAddUser = ref(false);
-const newUser = reactive({ matricola: "", nome: "", roleId: null as number | null });
+const newUser = reactive({ matricola: "", nome: "", cognome: "", roleId: null as number | null });
 
 function openAddUser() {
   newUser.matricola = "";
   newUser.nome = "";
+  newUser.cognome = "";
   newUser.roleId = null;
   for (const f of flows.value) {
     rightsByFlowNew[f.id] = [];
@@ -434,39 +373,18 @@ function openAddUser() {
 }
 
 async function confirmAddUser() {
-  if (!newUser.matricola || !newUser.roleId) {
+  if (!newUser.matricola ||!newUser.nome||!newUser.cognome|| !newUser.roleId) {
     alert("Compila tutti i campi obbligatori");
     return;
   }
 
   try {
-    // 1. Salva ruolo utente (queryId 26)
-    await apiAddUser(newUser.matricola, newUser.roleId, rightsStore.matricola, getDeviceName());
+    // Inserimento utente
+    await apiAddUser(newUser.matricola,newUser.nome,newUser.cognome,newUser.roleId);
+    // Ricarica lista utenti (queryId 1)
+    await reloadUsersViaQuery6();
 
-    // 2. Inserisci permessi selezionati per il nuovo utente (queryId 47) in un\'unica batch call
-    const batchInsertNew: any[] = [];
-    for (const flowId in rightsByFlowNew) {
-      const diritti = rightsByFlowNew[flowId];
-      if (!Array.isArray(diritti) || diritti.length === 0) continue;
-      for (const dirittoId of diritti) {
-        batchInsertNew.push({
-          params: [
-            { index: 1, value: Number(flowId) }, // ID_FLUSSO
-            { index: 2, value: dirittoId }, // ID_DIRITTO_FLUSSO
-            { index: 3, value: getDeviceName() }, // DEVICE
-            { index: 4, value: rightsStore.matricola }, // OPERATORE
-            { index: 5, value: newUser.matricola }, // UTENTE
-          ],
-        });
-      }
-    }
-    if (batchInsertNew.length > 0) {
-      await apiBatchInsertUserRights(batchInsertNew);
-    }
 
-    // Aggiorna i dati da backend (evita desincronizzazioni locali)
-
-    // Chiudi la modale di inserimento
     showAddUser.value = false;
 
     // Mostra conferma per poco e chiudi automaticamente
@@ -480,8 +398,6 @@ async function confirmAddUser() {
     pendingUserSwitch = null;
     showUnsavedModal.value = false;
 
-    // Ricarica solo gli utenti via query 6, senza cambiare selezione
-    await reloadUsersViaQuery6();
   } catch (err) {
     alert("Errore durante il salvataggio del nuovo utente.");
     console.error(err);
@@ -502,15 +418,28 @@ async function confirmAddUser() {
 //   showAddUser.value = false;
 // }
 
-/* ================== Metodi gestione utenti ================== */
-function markDirty() {
-  isDirty.value = true;
-}
+// /* ================== Metodi gestione utenti ================== */
+// function markDirty() {
+//   isDirty.value = true;
+// }
 
-// Called when a permission checkbox is changed for a flow
-function onPermChange(flowId: number) {
-  markDirty();
-  lastTouchedFlowId.value = flowId;
+// Carica utenti (queryId 1) e ruoli
+async function reloadUsersViaQuery6() {
+  try {
+    const { data } = await apiLoadUsers();
+    console.log(data)
+    const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
+    users.value = rows.map((r: any) => ({
+      matricola: r.MATRICOLA,
+      nome: r.NOME ?? r.MATRICOLA,
+      cognome: r.COGNOME ?? "",
+      roleId: r.ID_DIRITTO ?? null,
+    }));
+    console.log(users)
+    await loadRoles();
+  } catch (err) {
+    console.error("Errore inizializzazione pagina:", err);
+  }
 }
 
 function selectUser(u: any) {
@@ -557,7 +486,12 @@ async function saveRights() {
 
   try {
     // 1. Salva ruolo
-    await apiSaveUserRole(Number(selectedUser.value.roleId), String(rightsStore.matricola ?? ""), getDeviceName(), selectedUser.value.nome);
+    await apiSaveUserRole(
+      Number(selectedUser.value.roleId),
+      String(rightsStore.matricola ?? ""),
+      getDeviceName(),
+      selectedUser.value.nome
+    );
 
     const batchInsert: any[] = []; // ðŸ‘ˆ nuovi diritti ’ 47
     const batchUpdate: any[] = []; // ðŸ‘ˆ giÃ  esistenti ’ 27
@@ -624,6 +558,6 @@ async function saveRights() {
 
 /* ================== Bootstrap ================== */
 onMounted(async () => {
-  reloadUsersViaQuery6();
+  await reloadUsersViaQuery6();
 });
 </script>

@@ -1,42 +1,31 @@
 import { apiFetchRightsByMatricola } from "@/services/api";
-import type { RightsPayload, FlowRights } from "@/models/rights";
+import type { RightsPayload, Right } from "@/models/rights";
 
 type RawRightRow = {
-  ID_DIRITTO: number;
-  ID_DIRITTO_FLUSSO?: number;
-  ID_FLUSSO?: number;
+  ID?: number;
+  DESCRIZIONE_BREVE?: string;
+  DESCRIZIONE_LUNGA?: string;
 };
 
 export async function fetchRightsByMatricola(matricola: string): Promise<RightsPayload> {
   const { data } = await apiFetchRightsByMatricola(matricola);
-
+console.log(data)
   const generalRoles: number[] = [];
-  const flowsMap = new Map<number, FlowRights>();
-  const rows: RawRightRow[] = Array.isArray(data?.rows) ? data.rows : [];
+  const rights: Right[] = [];
+  const rows: RawRightRow[] = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
 
   for (const r of rows) {
-    // diritti generali (ID_DIRITTO)
-    if (r.ID_DIRITTO && !generalRoles.includes(r.ID_DIRITTO)) {
-      generalRoles.push(r.ID_DIRITTO!);
+    if (typeof r.ID === 'number' && !generalRoles.includes(r.ID)) {
+      generalRoles.push(r.ID);
     }
-
-    // diritti per flusso
-    if (r.ID_FLUSSO) {
-      if (!flowsMap.has(r.ID_FLUSSO)) {
-        flowsMap.set(r.ID_FLUSSO, {
-          flowId: r.ID_FLUSSO,
-          flowCode: r.ID_DIRITTO_FLUSSO ?? undefined, // opzionale se serve
-          rights: [],
-        });
-      }
-      if (r.ID_DIRITTO_FLUSSO) {
-        const rights = flowsMap.get(r.ID_FLUSSO)!.rights;
-        if (!rights.includes(r.ID_DIRITTO_FLUSSO)) {
-          rights.push(r.ID_DIRITTO_FLUSSO);
-        }
-      }
+    if (typeof r.ID === 'number') {
+      rights.push({
+        id_diritto: r.ID,
+        descrizione_breve: String(r.DESCRIZIONE_BREVE ?? ''),
+        descrizione_lunga: String(r.DESCRIZIONE_LUNGA ?? ''),
+      });
     }
   }
 
-  return {  flows: Array.from(flowsMap.values()), generalRoles: generalRoles };
+  return { rights, generalRoles };
 }

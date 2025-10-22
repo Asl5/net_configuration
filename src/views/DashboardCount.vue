@@ -806,6 +806,7 @@ onMounted(async () => {
   pivotError.value = null;
 
   if (rightsStore.matricola) {
+    console.log("adadaaaaaaaaaaaaaaaa")
     await loadFlows(rightsStore.matricola);
     await loadFlowQueries();
 

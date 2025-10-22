@@ -1,25 +1,25 @@
 //SECURITTY DA RIVEDERE
 
-import { http } from './http';
-import { AUTH_BASE, QUERY_BASE } from '@/config/config';
+import { http } from "./http";
+import { AUTH_BASE, QUERY_BASE } from "@/config/config";
 
 // POST /auth/login
 export async function loginRequest(username: string, password: string) {
   const res = await fetch(`${AUTH_BASE}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include', // <-- serve per refresh cookie HttpOnly
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include", // <-- serve per refresh cookie HttpOnly
     body: JSON.stringify({ username, password }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Credenziali non valide');
+    throw new Error(err.error || "Credenziali non valide");
   }
   return res.json() as Promise<{ access_token: string; token_type: string; expires_in: number }>;
 }
 
 export async function getUsers() {
-  const { data } = await http.get('/api/users'); // http.ts ha già API_BASE come baseURL
+  const { data } = await http.get("/api/users"); // http.ts ha già API_BASE come baseURL
   return data;
 }
 
@@ -39,11 +39,7 @@ export async function spiLoadRequests() {
   });
 }
 
-export async function spiInsertRequest(
-  idFlusso: number,
-  periodo: string,
-  anno: number
-) {
+export async function spiInsertRequest(idFlusso: number, periodo: string, anno: number) {
   return http.post(QUERY_BASE, {
     queryId: 24,
     params: [
@@ -71,10 +67,7 @@ export async function apiLoadFlowQueries() {
   });
 }
 
-
-
 export async function apiBatchCounts(queryId: number, paramLikes: string[]) {
-
   const batch = paramLikes.map((pl) => ({
     params: [
       { index: 1, value: pl },
@@ -107,6 +100,7 @@ export async function apiLoadFlowQueriesSimple() {
 
 // Rights APIs
 export async function apiFetchRightsByMatricola(matricola: string) {
+  console.log("dfvvvvvvvv");
   return http.post(QUERY_BASE, {
     queryId: 1,
     params: [{ index: 1, value: matricola }],
@@ -122,17 +116,16 @@ export async function apiDeleteUser(matricola: string) {
 }
 
 export async function apiLoadRoles() {
-  return http.post(QUERY_BASE, { queryId: 7, params: [], maxRows: 100 });
+  return http.post(QUERY_BASE, { queryId: 3, params: [], maxRows: 100 });
 }
 
-export async function apiLoadUsers() {
-  return http.post(QUERY_BASE, { queryId: 6, params: [], maxRows: 100 });
-}
+// export async function apiLoadUsers() {
+//   return http.post(QUERY_BASE, { queryId: 6, params: [], maxRows: 100 });
+// }
 
 export async function apiLoadFlowsForSettings() {
   return http.post(QUERY_BASE, { queryId: 8, params: [], maxRows: 100 });
 }
-
 
 export async function apiFetchFlussiForSettings() {
   const { data } = await http.post(QUERY_BASE, {
@@ -154,7 +147,11 @@ export async function apiLoadFlowPermissions() {
 }
 
 export async function apiLoadUserFlowRights(matricola: string) {
-  return http.post(QUERY_BASE, { queryId: 10, params: [{ index: 1, value: matricola }], maxRows: 500 });
+  return http.post(QUERY_BASE, {
+    queryId: 10,
+    params: [{ index: 1, value: matricola }],
+    maxRows: 500,
+  });
 }
 
 export async function apiSaveUserRole(roleId: number, who: string, device: string, name: string) {
@@ -198,11 +195,7 @@ export async function apiUpdateFlow(
   });
 }
 
-export async function apiCreateFlow(
-  nome: string,
-  descrizioneLunga: string,
-  rangeType: string
-) {
+export async function apiCreateFlow(nome: string, descrizioneLunga: string, rangeType: string) {
   // Crea nuovo flusso (queryId 29)
   return http.post(QUERY_BASE, {
     queryId: 29,
@@ -217,17 +210,23 @@ export async function apiCreateFlow(
 // Create new user with role (query 25)
 export async function apiAddUser(
   matricola: string,
-  roleId: number,
-  who: string | null,
-  device: string
+  nome: string,
+  cognome: string | null,
+  roleId: number
 ) {
+  await http.post(QUERY_BASE, {
+    queryId: 4,
+    params: [
+      { index: 1, value: matricola },
+      { index: 2, value: nome },
+      { index: 3, value: cognome },
+    ],
+  });
   return http.post(QUERY_BASE, {
-    queryId: 25,
+    queryId: 5,
     params: [
       { index: 1, value: matricola },
       { index: 2, value: roleId },
-      { index: 3, value: who },
-      { index: 4, value: device },
     ],
   });
 }
@@ -241,8 +240,11 @@ export async function apiLoadErrorTypes(flowId: number) {
   });
 }
 
-export async function apiRunDynamicQuery(queryId: number, periodo1: string | null, periodo2: string | null) {
-
+export async function apiRunDynamicQuery(
+  queryId: number,
+  periodo1: string | null,
+  periodo2: string | null
+) {
   return http.post(QUERY_BASE, {
     queryId,
     params: [
@@ -271,23 +273,23 @@ export async function apiLoadRitorni(matricola: string) {
 
 export async function apiBatchUpdateInvii(batch: any[]) {
   if (!batch.length) return { data: null } as any;
-  return http.post(QUERY_BASE, { queryId: 35, kind: 'batchUpdate', batch });
+  return http.post(QUERY_BASE, { queryId: 35, kind: "batchUpdate", batch });
 }
 
 export async function apiBatchInsertInvii(batch: any[]) {
   if (!batch.length) return { data: null } as any;
-  return http.post(QUERY_BASE, { queryId: 33, kind: 'batch', batch });
+  return http.post(QUERY_BASE, { queryId: 33, kind: "batch", batch });
 }
 
 export async function apiBatchUpdateRitorni(batch: any[]) {
   if (!batch.length) return { data: null } as any;
   // In origine usa headers espliciti; http.ts probabilmente imposta JSON. Li omettiamo qui.
-  return http.post(QUERY_BASE, { queryId: 36, kind: 'batch', batch });
+  return http.post(QUERY_BASE, { queryId: 36, kind: "batch", batch });
 }
 
 export async function apiBatchInsertRitorni(batch: any[]) {
   if (!batch.length) return { data: null } as any;
-  return http.post(QUERY_BASE, { queryId: 34, kind: 'batch', batch });
+  return http.post(QUERY_BASE, { queryId: 34, kind: "batch", batch });
 }
 
 // FlowsSettings APIs
@@ -318,9 +320,9 @@ export async function apiAddFlow(nome: string, descrizioneLunga: string, rangeTy
 //   return http.post(QUERY_BASE, { queryId: 7, params: [], maxRows: 100 });
 // }
 
-// export async function apiLoadUsers() {
-//   return http.post(QUERY_BASE, { queryId: 6, params: [], maxRows: 100 });
-// }
+export async function apiLoadUsers() {
+  return http.post(QUERY_BASE, { queryId: 6, params: [], maxRows: 100 });
+}
 
 // export async function apiLoadFlows() {
 //   return http.post(QUERY_BASE, { queryId: 8, params: [], maxRows: 1000 });
@@ -340,10 +342,10 @@ export async function apiLoadUserRights(matricola: string) {
 
 export async function apiBatchInsertUserRights(batch: any[]) {
   if (!batch.length) return { data: null } as any;
-  return http.post(QUERY_BASE, { queryId: 47, kind: 'batchUpdate', batch });
+  return http.post(QUERY_BASE, { queryId: 47, kind: "batchUpdate", batch });
 }
 
 export async function apiBatchUpdateUserRights(batch: any[]) {
   if (!batch.length) return { data: null } as any;
-  return http.post(QUERY_BASE, { queryId: 27, kind: 'batchUpdate', batch });
+  return http.post(QUERY_BASE, { queryId: 27, kind: "batchUpdate", batch });
 }

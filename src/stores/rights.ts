@@ -1,11 +1,11 @@
 import { defineStore } from "pinia";
-import type { RightsPayload, FlowRights } from "@/models/rights";
+import type { RightsPayload, Right } from "@/models/rights";
 import { fetchRightsByMatricola } from "@/services/rights";
 
 const SESSION_KEY = "auth.rights.v1";
 
 type RightsState = {
-  flows: FlowRights[];
+  rights: Right[];
   loading: boolean;
   matricola: string | null;
   generalRoles: number[];
@@ -15,19 +15,13 @@ type PersistedPayload = RightsPayload & { matricola: string | null };
 
 export const useRightsStore = defineStore("rights", {
   state: (): RightsState => ({
-    flows: [],
+    rights: [],
     loading: false,
     matricola: null,
     generalRoles: [],
   }),
 
   getters: {
-    hasOnFlow: (s) => (flowId: number, code: number) =>
-      s.flows.find((f) => f.flowId === flowId)?.rights.includes(code) ?? false,
-
-    rightsForFlow: (s) => (flowId: number) =>
-      s.flows.find((f) => f.flowId === flowId)?.rights ?? [],
-
     hasRole: (s) => (roleCode: number) => s.generalRoles.includes(roleCode),
     has: (s) => (roleCode: number) => s.generalRoles.includes(roleCode),
   },
@@ -39,9 +33,9 @@ export const useRightsStore = defineStore("rights", {
         this.matricola = matricola;
         const data: RightsPayload = await fetchRightsByMatricola(matricola);
         // DEBUG backend payload
+console.log(data)
 
-
-        this.flows = data.flows ?? [];
+        this.rights = data.rights ?? [];
 
         // Usa gli ID dei diritti generali come generalRoles
         this.generalRoles = (data.generalRoles ?? []) as number[];
@@ -55,8 +49,7 @@ export const useRightsStore = defineStore("rights", {
     persist() {
       const payload: PersistedPayload = {
         matricola: this.matricola,
-
-        flows: this.flows,
+        rights: this.rights,
         generalRoles: (this as any).generalRoles ?? [],
       };
 
@@ -71,7 +64,7 @@ export const useRightsStore = defineStore("rights", {
 
         this.matricola = data.matricola ?? null;
 
-        this.flows = Array.isArray(data.flows) ? data.flows : [];
+        this.rights = Array.isArray((data as any).rights) ? (data as any).rights : [];
         (this as any).generalRoles = Array.isArray(data.generalRoles) ? (data.generalRoles as any) : [];
 
       } catch {
@@ -80,7 +73,7 @@ export const useRightsStore = defineStore("rights", {
     },
 
     clear() {
-      this.flows = [];
+      this.rights = [];
       this.matricola = null;
       (this as any).generalRoles = [];
       sessionStorage.removeItem(SESSION_KEY);
