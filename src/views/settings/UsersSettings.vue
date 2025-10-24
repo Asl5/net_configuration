@@ -20,7 +20,7 @@
                 : ''
             "
           >
-            {{ u.nome }}
+            {{ u.matricola }} - {{ u.nome }} {{ u.cognome }}
           </li>
         </ul>
       </aside>
@@ -60,7 +60,8 @@
           <div class="w-full bg-white rounded-lg shadow p-4 md:p-6 space-y-4">
             <div class="flex items-center justify-between">
               <h2 class="text-lg font-semibold text-gray-800">
-                {{ selectedUser.nome }} {{ selectedUser.cognome }}
+                {{ displayMatricola }} - {{ displayNome }} {{ displayCognome }}
+                <span v-if="isDirty" class="ml-2 text-xs font-normal text-orange-600">(modifiche non salvate)</span>
               </h2>
               <BaseButton variant="danger" size="sm" @click="onClickDeleteUser">Elimina</BaseButton>
             </div>
@@ -194,74 +195,49 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, onMounted, watch } from "vue";
 import BaseHeader from "@/components/base/BaseHeader.vue";
 import BaseSelect from "@/components/base/BaseSelect.vue";
 import BaseButton from "@/components/base/BaseButton.vue";
 import BaseInput from "@/components/base/BaseInput.vue";
-// import BaseCheckBox from "@/components/base/BaseCheckBox.vue";
 import BaseModalAlert from "@/components/base/BaseModalAlert.vue";
-import { useRightsStore } from "@/stores/rights";
-import { getDeviceName } from "@/utils/utils";
+
 import {
   apiAddUser,
-  apiSaveUserRole,
+  apiSaveUser,
   apiDeleteUser,
   apiLoadRoles,
-  // apiLoadUsers,
-  // apiLoadFlows,
-  // apiLoadFlowPermissions,
-  apiBatchInsertUserRights,
-  apiBatchUpdateUserRights,
+
   apiLoadUsers,
 } from "@/services/api";
 
-const rightsStore = useRightsStore();
 
-const showUnsavedModal = ref(false);
-let pendingUserSwitch: any = null;
 /* ================== Stato ================== */
 const users = ref<any[]>([]);
 const selectedUser = ref<any | null>(null);
+const originalUser = ref<{ nome: string; cognome: string; roleId: number | null } | null>(null);
+const displayNome = ref("");
+const displayCognome = ref("");
+const displayMatricola = ref("");
+const showUnsavedModal = ref(false);
+let pendingUserSwitch: any = null;
 const showDeleteModal = ref(false);
-function onClickDeleteUser() {
-  if (!selectedUser.value) return;
-  showDeleteModal.value = true;
-}
-async function performDeleteUser() {
-  if (!selectedUser.value) return;
-  try {
-    await apiDeleteUser(selectedUser.value.matricola);
-    // rimuovi da lista locale
-    users.value = users.value.filter((u) => u.matricola !== selectedUser.value!.matricola);
-    selectedUser.value = null;
-    showDeleteModal.value = false;
-    // riallinea lista utenti da backend
-    // await reloadUsersViaQuery6();
-  } catch (e) {
-    console.error(e);
-    alert("Errore durante l'eliminazione utente");
-  }
-}
+
 const rightsByFlow = reactive<Record<number, number[]>>({});
-// Snapshot iniziale dei permessi per flusso all'apertura/selezione utente
 const initialRightsByFlow = reactive<Record<number, number[]>>({});
 const isDirty = ref(false);
 const showConfirmModal = ref(false);
 const showErrorModal = ref(false);
 const rightsByFlowNew = reactive<Record<number, number[]>>({});
-// Traccia l\'ultimo flusso su cui l\'utente ha toccato un permesso
-// const lastTouchedFlowId = ref<number | null>(null);
-/* ================== Ruoli (query 7) ================== */
 const roleOptions = ref<{ value: number; label: string; descrizioneLunga: string }[]>([]);
 const roleLoading = ref(false);
-// const userStore = useRightsStore();
-// const userMatricola = userStore.matricola
+const flows = ref<{ id: number; nome: string; descrizioneLunga: string }[]>([]);
+
+/* ================== Caricamento ruoli ================== */
 async function loadRoles() {
   roleLoading.value = true;
   try {
     const { data } = await apiLoadRoles();
-    console.log(data)
     const rows = Array.isArray(data?.rows) ? data.rows : [];
     roleOptions.value = rows.map((r: any) => ({
       value: r.ID,
@@ -275,87 +251,126 @@ async function loadRoles() {
   }
 }
 
-// // Carica utenti via queryId 6 e poi ricarica ruoli, flussi, permessi
-// async function reloadUsersViaQuery6() {
-//   try {
-//     const { data } = await apiLoadUsers();
-//     const rows = Array.isArray(data?.rows) ? data.rows : [];
+/* ================== Carica utenti ================== */
+async function reloadUsersViaQuery6() {
+  try {
+    const { data } = await apiLoadUsers();
+    const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
+    users.value = rows.map((r: any) => ({
+      matricola: r.MATRICOLA,
+      nome: r.NOME ?? r.MATRICOLA,
+      cognome: r.COGNOME ?? "",
+      roleId: r.ID_DIRITTO ?? null,
+    }));
+    await loadRoles();
+  } catch (err) {
+    console.error("Errore inizializzazione pagina:", err);
+  }
+}
 
-//     const map = new Map<string, any>();
-//     rows.forEach((r: any) => {
-//       const key = r.MATRICOLA;
-//       if (!map.has(key)) {
-//         map.set(key, {
-//           matricola: r.MATRICOLA,
-//           nome: r.MATRICOLA, // TODO: usa campo nome reale se disponibile
-//           roleId: r.ID_DIRITTO ?? null,
-//           flowPerms: {},
-//         });
-//       }
-//       const user = map.get(key);
-//       if (r.ID_FLUSSO) {
-//         if (!user.flowPerms[r.ID_FLUSSO]) user.flowPerms[r.ID_FLUSSO] = [];
-//         if (r.ID_DIRITTO_FLUSSO && !user.flowPerms[r.ID_FLUSSO].includes(r.ID_DIRITTO_FLUSSO)) {
-//           user.flowPerms[r.ID_FLUSSO].push(r.ID_DIRITTO_FLUSSO);
-//         }
-//       }
-//     });
-//     users.value = Array.from(map.values());
+/* ================== Selezione e confronto modifiche ================== */
+function selectUser(u: any) {
+  // crea una copia indipendente dell'utente selezionato
+  selectedUser.value = JSON.parse(JSON.stringify(u));
 
-//     await loadRoles();
-//     await loadFlows();
-//     await loadFlowPermissions();
-//   } catch (err) {
-//     console.error("Errore inizializzazione pagina:", err);
-//   }
-// }
+  displayNome.value = u?.nome ?? "";
+  displayCognome.value = u?.cognome ?? "";
+  displayMatricola.value = u?.matricola ?? "";
 
-function confirmUserSwitch() {
-  showUnsavedModal.value = false;
-  // Azzeramento diritti selezionati
+  // snapshot permessi (solo se serve)
+  for (const f of flows.value) {
+    if (!Array.isArray(rightsByFlow[f.id])) rightsByFlow[f.id] = [];
+  }
+  Object.keys(u.flowPerms ?? {}).forEach((fid) => {
+    const idNum = Number(fid);
+    rightsByFlow[idNum] = Array.isArray(u.flowPerms[idNum]) ? [...u.flowPerms[idNum]] : [];
+  });
+
+  // snapshot base
+  originalUser.value = {
+    nome: u?.nome ?? "",
+    cognome: u?.cognome ?? "",
+    roleId: u?.roleId ?? null,
+  };
+
+  for (const f of flows.value) {
+    initialRightsByFlow[f.id] = Array.isArray(rightsByFlow[f.id])
+      ? [...rightsByFlow[f.id]]
+      : [];
+  }
+
+  isDirty.value = false;
+}
+
+function resetRights() {
   for (const f of flows.value) {
     rightsByFlow[f.id] = [];
     initialRightsByFlow[f.id] = [];
   }
+}
+
+function onUserClick(u: any) {
+  if (isDirty.value) {
+    pendingUserSwitch = u;
+    showUnsavedModal.value = true;
+    return;
+  }
+  switchToUser(u);
+}
+
+function switchToUser(u: any) {
+  resetRights();
+  selectUser(u);
+}
+
+function confirmUserSwitch() {
+  showUnsavedModal.value = false;
   if (pendingUserSwitch) {
-    selectUser(pendingUserSwitch);
+    // Pulisce eventuali modifiche non salvate
+    discardUnsavedChanges();
+    switchToUser(pendingUserSwitch);
     pendingUserSwitch = null;
+  }
+  isDirty.value = false;
+}
+
+function discardUnsavedChanges() {
+  if (selectedUser.value && originalUser.value) {
+    selectedUser.value.nome = originalUser.value.nome;
+    selectedUser.value.cognome = originalUser.value.cognome;
+    selectedUser.value.roleId = originalUser.value.roleId;
+  }
+  for (const f of flows.value) {
+    rightsByFlow[f.id] = [...(initialRightsByFlow[f.id] ?? [])];
   }
 }
 
-/* ================== Flussi (query 8) ================== */
-const flows = ref<{ id: number; nome: string; descrizioneLunga: string }[]>([]);
-// async function loadFlows() {
-//   try {
-//     const { data } = await apiLoadFlows(userMatricola!);
-//     console.log("data", data);
-//     const rows = Array.isArray(data?.rows) ? data.rows : [];
-//     flows.value = rows.map((r: any) => ({
-//       id: r.ID_FLUSSO,
-//       nome: r.DESCRIZIONE_FLUSSO,
-//       descrizioneLunga: r.DESCRIZIONE_FLUSSO_LUN,
-//     }));
-//     console.log("flows", flows.value);
-//   } catch (err) {
-//     console.error("Errore caricamento flussi:", err);
-//   }
-// }
+function isRightsDirty(): boolean {
+  for (const f of flows.value) {
+    const cur = rightsByFlow[f.id] ?? [];
+    const init = initialRightsByFlow[f.id] ?? [];
+    if (cur.length !== init.length) return true;
+    for (const v of cur) if (!init.includes(v)) return true;
+  }
+  return false;
+}
 
-/* ================== Permessi flusso (query 9) ================== */
-// const flowPermissions = ref<{ id: number; descrizione: string; descrizione_lunga: string }[]>([]);
-// async function loadFlowPermissions() {
-//   try {
-//     const { data } = await apiLoadFlowPermissions();
-//     const rows = Array.isArray(data?.rows) ? data.rows : [];
-//     flowPermissions.value = rows.map((r: any) => ({
-//       id: r.ID,
-//       descrizione: r.DESCRIZIONE,
-//       descrizione_lunga: r.DESCRIZIONE_LUNGA,
-//     }));
-//   } catch (err) {
-//     console.error("Errore caricamento permessi flusso:", err);
-//   }
-// }
+/* ================== Watch su modifiche ================== */
+watch(
+  () => [
+    selectedUser.value?.nome ?? "",
+    selectedUser.value?.cognome ?? "",
+    selectedUser.value?.roleId ?? null,
+  ],
+  () => {
+    if (!selectedUser.value || !originalUser.value) return;
+    isDirty.value =
+      selectedUser.value.nome !== originalUser.value.nome ||
+      selectedUser.value.cognome !== originalUser.value.cognome ||
+      selectedUser.value.roleId !== originalUser.value.roleId ||
+      isRightsDirty();
+  }
+);
 
 /* ================== Aggiungi utente ================== */
 const showAddUser = ref(false);
@@ -373,183 +388,84 @@ function openAddUser() {
 }
 
 async function confirmAddUser() {
-  if (!newUser.matricola ||!newUser.nome||!newUser.cognome|| !newUser.roleId) {
+  if (!newUser.matricola || !newUser.nome || !newUser.cognome || !newUser.roleId) {
     alert("Compila tutti i campi obbligatori");
     return;
   }
 
   try {
-    // Inserimento utente
-    await apiAddUser(newUser.matricola,newUser.nome,newUser.cognome,newUser.roleId);
-    // Ricarica lista utenti (queryId 1)
+    await apiAddUser(newUser.matricola, newUser.nome, newUser.cognome, newUser.roleId);
     await reloadUsersViaQuery6();
-
-
     showAddUser.value = false;
-
-    // Mostra conferma per poco e chiudi automaticamente
     showConfirmModal.value = true;
-    setTimeout(() => {
-      showConfirmModal.value = false;
-    }, 1200);
-
-    // Azzerare stato modifiche per non mostrare conferma cambio utente
+    setTimeout(() => (showConfirmModal.value = false), 1200);
     isDirty.value = false;
     pendingUserSwitch = null;
     showUnsavedModal.value = false;
-
   } catch (err) {
     alert("Errore durante il salvataggio del nuovo utente.");
     console.error(err);
   }
 }
 
-// function addUser() {
-//   if (!newUser.nome || !newUser.matricola || !newUser.roleId) {
-//     alert("Compila tutti i campi");
-//     return;
-//   }
-//   users.value.push({
-//     matricola: newUser.matricola,
-//     nome: newUser.nome,
-//     roleId: newUser.roleId,
-//     flowPerms: {},
-//   });
-//   showAddUser.value = false;
-// }
+/* ================== Eliminazione utente ================== */
+function onClickDeleteUser() {
+  if (!selectedUser.value) return;
+  showDeleteModal.value = true;
+}
 
-// /* ================== Metodi gestione utenti ================== */
-// function markDirty() {
-//   isDirty.value = true;
-// }
-
-// Carica utenti (queryId 1) e ruoli
-async function reloadUsersViaQuery6() {
+async function performDeleteUser() {
+  if (!selectedUser.value) return;
   try {
-    const { data } = await apiLoadUsers();
-    console.log(data)
-    const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
-    users.value = rows.map((r: any) => ({
-      matricola: r.MATRICOLA,
-      nome: r.NOME ?? r.MATRICOLA,
-      cognome: r.COGNOME ?? "",
-      roleId: r.ID_DIRITTO ?? null,
-    }));
-    console.log(users)
-    await loadRoles();
-  } catch (err) {
-    console.error("Errore inizializzazione pagina:", err);
+    await apiDeleteUser(selectedUser.value.matricola);
+    users.value = users.value.filter((u) => u.matricola !== selectedUser.value!.matricola);
+    selectedUser.value = null;
+    showDeleteModal.value = false;
+  } catch (e) {
+    console.error(e);
+    alert("Errore durante l'eliminazione utente");
   }
 }
 
-function selectUser(u: any) {
-  selectedUser.value = u;
-
-  // inizializza le righe dei permessi per tutti i flussi (array vuoto)
-  for (const f of flows.value) {
-    if (!Array.isArray(rightsByFlow[f.id])) rightsByFlow[f.id] = [];
-  }
-  // popola dai permessi dell'utente
-  Object.keys(u.flowPerms ?? {}).forEach((fid) => {
-    const idNum = Number(fid);
-    rightsByFlow[idNum] = Array.isArray(u.flowPerms[idNum]) ? [...u.flowPerms[idNum]] : [];
-  });
-
-  isDirty.value = false;
-  // Crea snapshot iniziale per confronto in saveRights
-  for (const f of flows.value) {
-    initialRightsByFlow[f.id] = Array.isArray(rightsByFlow[f.id]) ? [...rightsByFlow[f.id]] : [];
-  }
-}
-
-function onUserClick(u: any) {
-  if (isDirty.value) {
-    pendingUserSwitch = u;
-    showUnsavedModal.value = true;
-    return;
-  }
-  // Azzeramento diritti selezionati
-  for (const f of flows.value) {
-    rightsByFlow[f.id] = [];
-    initialRightsByFlow[f.id] = [];
-  }
-  selectUser(u);
-}
-
+/* ================== Salvataggio ================== */
 async function saveRights() {
   if (!selectedUser.value) return;
-
   if (!selectedUser.value.roleId) {
     showErrorModal.value = true;
     return;
   }
 
   try {
-    // 1. Salva ruolo
-    await apiSaveUserRole(
-      Number(selectedUser.value.roleId),
-      String(rightsStore.matricola ?? ""),
-      getDeviceName(),
-      selectedUser.value.nome
+    await apiSaveUser(
+      String(selectedUser.value.matricola ?? ""),
+      String(selectedUser.value.nome ?? ""),
+      String(selectedUser.value.cognome ?? ""),
+      Number(selectedUser.value.roleId)
     );
 
-    const batchInsert: any[] = []; // ðŸ‘ˆ nuovi diritti ’ 47
-    const batchUpdate: any[] = []; // ðŸ‘ˆ giÃ  esistenti ’ 27
+    // aggiorna voce nella lista solo dopo salvataggio
+  const idx = users.value.findIndex((u) => u.matricola === selectedUser.value?.matricola);
+if (idx !== -1 && selectedUser.value) {
+  users.value[idx] = {
+    ...users.value[idx],
+    nome: selectedUser.value.nome,
+    cognome: selectedUser.value.cognome,
+    roleId: selectedUser.value.roleId,
+  } as any;
+}
 
-    for (const flowId in rightsByFlow) {
-      const diritti = rightsByFlow[flowId] ?? [];
-      const iniziali = initialRightsByFlow[flowId] ?? [];
-
-      for (const dirittoId of diritti) {
-        if (iniziali.includes(dirittoId)) {
-          // giÃ  presente ’ update
-          batchUpdate.push({
-            params: [
-              { index: 1, value: Number(flowId) },
-              { index: 2, value: dirittoId },
-              { index: 3, value: rightsStore.matricola },
-              { index: 4, value: getDeviceName() },
-              { index: 5, value: selectedUser.value.matricola },
-              { index: 6, value: Number(flowId) },
-            ],
-          });
-        } else {
-          // nuovo ’ insert
-          batchInsert.push({
-            params: [
-              { index: 1, value: Number(flowId) },
-              { index: 2, value: dirittoId },
-              { index: 3, value: getDeviceName() },
-              { index: 4, value: rightsStore.matricola },
-              { index: 5, value: selectedUser.value.matricola },
-            ],
-          });
-        }
-      }
-    }
-
-    if (batchInsert.length > 0) {
-      await apiBatchInsertUserRights(batchInsert);
-    }
-
-    if (batchUpdate.length > 0) {
-      await apiBatchUpdateUserRights(batchUpdate);
-    }
-
-    showConfirmModal.value = true;
-    isDirty.value = false;
-
-    // aggiorna lo snapshot
+    // aggiorna baseline dopo salvataggio
+    originalUser.value = {
+      nome: selectedUser.value.nome ?? "",
+      cognome: selectedUser.value.cognome ?? "",
+      roleId: selectedUser.value.roleId ?? null,
+    };
     for (const f of flows.value) {
       initialRightsByFlow[f.id] = [...(rightsByFlow[f.id] ?? [])];
     }
-    // allinea anche i permessi locali dell\'utente selezionato
-    if (selectedUser.value) {
-      selectedUser.value.flowPerms = {} as any;
-      for (const f of flows.value) {
-        (selectedUser.value.flowPerms as any)[f.id] = [...(rightsByFlow[f.id] ?? [])];
-      }
-    }
+
+    isDirty.value = false;
+    showConfirmModal.value = true;
   } catch (err) {
     console.error("Errore salvataggio:", err);
     alert("Errore durante il salvataggio dei permessi.");
@@ -560,4 +476,18 @@ async function saveRights() {
 onMounted(async () => {
   await reloadUsersViaQuery6();
 });
+
+/* ================== Avviso chiusura pagina ================== */
+const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
+  e.preventDefault();
+  e.returnValue = "";
+};
+watch(
+  () => isDirty.value,
+  (dirty) => {
+    if (dirty) window.addEventListener("beforeunload", beforeUnloadHandler);
+    else window.removeEventListener("beforeunload", beforeUnloadHandler);
+  },
+  { immediate: true }
+);
 </script>

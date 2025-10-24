@@ -113,17 +113,17 @@ const router = createRouter({
           },
         },
         {
-          path: "/flows",
-          name: "settings.flows",
-          component: () => import("../views/settings/FlowsSettings.vue"),
+          path: "/sedi",
+          name: "settings.sedi",
+          component: () => import("../views/settings/SediSettings.vue"),
           meta: {
             public: true,
-            title: "Flows Settings",
+            title: "Sedi Settings",
             nav: true,
             order: 2,
             parent: "settings",
             requiredRole: [1, 3],
-            icon: "settings",
+            icon: "sedi",
           },
         },
         {

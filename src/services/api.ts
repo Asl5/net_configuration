@@ -154,14 +154,24 @@ export async function apiLoadUserFlowRights(matricola: string) {
   });
 }
 
-export async function apiSaveUserRole(roleId: number, who: string, device: string, name: string) {
+// Update user basic data + role
+// Required params: matricola, nome, cognome, roelid (roleId)
+export async function apiSaveUser(matricola: string, nome: string, cognome: string, roleId: number) {
+  await http.post(QUERY_BASE, {
+    queryId: 7,
+    params: [
+      { index: 1, value: matricola },
+      { index: 2, value: nome },
+      { index: 3, value: cognome },
+      { index: 4, value: matricola },
+    ],
+  });
   return http.post(QUERY_BASE, {
-    queryId: 26,
+    queryId: 8,
     params: [
       { index: 1, value: roleId },
-      { index: 2, value: who },
-      { index: 3, value: device },
-      { index: 4, value: name },
+      { index: 2, value: matricola },
+
     ],
   });
 }
@@ -290,6 +300,72 @@ export async function apiBatchUpdateRitorni(batch: any[]) {
 export async function apiBatchInsertRitorni(batch: any[]) {
   if (!batch.length) return { data: null } as any;
   return http.post(QUERY_BASE, { queryId: 34, kind: "batch", batch });
+}
+
+// SediSettings APIs
+// Estrazione sedi (queryId 9)
+export async function apiLoadSedi() {
+  return http.post(QUERY_BASE, { queryId: 11, params: [], maxRows: 1000 });
+}
+
+// Inserimento sede (queryId 10)
+export async function apiCreateSede(payload: {
+  NOME: string;
+  COMUNE: string;
+  INDIRIZZO: string;
+  ORARIO_SEDE: string;
+  COD_UNIVOCO_INFRATEL: string;
+  CONNETTIVITA: string;
+  NOTE: string | null;
+  ATTIVA: number; // 1/0
+  DATA_AGGIORNAMENTO: string; // ISO date string
+}) {
+  const p = payload;
+  console.log(p)
+  return http.post(QUERY_BASE, {
+    queryId: 9,
+    params: [
+      { index: 1, value: p.NOME },
+      { index: 2, value: p.COMUNE },
+      { index: 3, value: p.INDIRIZZO },
+      { index: 4, value: p.ORARIO_SEDE },
+      { index: 5, value: p.COD_UNIVOCO_INFRATEL },
+      { index: 6, value: p.CONNETTIVITA },
+      { index: 7, value: p.NOTE },
+      { index: 8, value: p.ATTIVA },
+      { index: 9, value: p.DATA_AGGIORNAMENTO },
+    ],
+  });
+}
+
+// Modifica sede (queryId 11)
+export async function apiUpdateSede(id: number, payload: {
+  NOME: string;
+  COMUNE: string;
+  INDIRIZZO: string;
+  ORARIO_SEDE: string;
+  COD_UNIVOCO_INFRATEL: string;
+  CONNETTIVITA: string;
+  NOTE: string | null;
+  ATTIVA: number; // 1/0
+  DATA_AGGIORNAMENTO: string; // ISO date string
+}) {
+  const p = payload;
+  return http.post(QUERY_BASE, {
+    queryId: 10,
+    params: [
+      { index: 1, value: p.NOME },
+      { index: 2, value: p.COMUNE },
+      { index: 3, value: p.INDIRIZZO },
+      { index: 4, value: p.ORARIO_SEDE },
+      { index: 5, value: p.COD_UNIVOCO_INFRATEL },
+      { index: 6, value: p.CONNETTIVITA },
+      { index: 7, value: p.NOTE },
+      { index: 8, value: p.ATTIVA },
+      { index: 9, value: p.DATA_AGGIORNAMENTO },
+      { index: 10, value: id },
+    ],
+  });
 }
 
 // FlowsSettings APIs

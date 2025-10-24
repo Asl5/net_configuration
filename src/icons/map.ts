@@ -88,6 +88,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ArrowRightStartOnRectangleIcon,
+  BuildingOfficeIcon,
 } from "@heroicons/vue/24/solid";
 
 /**
@@ -183,4 +184,6 @@ export const iconMap: Record<string, any> = {
   chevronLeft: ChevronLeftIcon,
   chevronRight: ChevronRightIcon,
   logout: ArrowRightStartOnRectangleIcon,
+  // Sedi
+  sedi: BuildingOfficeIcon,
 };
