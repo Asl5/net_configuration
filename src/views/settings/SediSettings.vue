@@ -45,7 +45,7 @@
               <BaseCalendar
                 v-model="selectedSede.DATA_AGGIORNAMENTO"
                 label="Data aggiornamento"
-                @update:modelValue="markDirty"
+
               />
                  <div class="flex items-center gap-3 mt-6">
                 <input id="attiva" type="checkbox" v-model="attivaBool" class="h-4 w-4" />
@@ -116,6 +116,7 @@ import { ref, reactive, onMounted, watch, computed } from "vue";
 import BaseHeader from "@/components/base/BaseHeader.vue";
 import BaseButton from "@/components/base/BaseButton.vue";
 import BaseInput from "@/components/base/BaseInput.vue";
+import BaseCalendar from "@/components/base/BaseCalendar.vue";
 import BaseModalAlert from "@/components/base/BaseModalAlert.vue";
 import { apiLoadSedi, apiCreateSede, apiUpdateSede } from "@/services/api";
 

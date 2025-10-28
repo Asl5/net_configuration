@@ -23,49 +23,6 @@ export async function getUsers() {
   return data;
 }
 
-export async function spiLoadFlows(matricola: string) {
-  return http.post(QUERY_BASE, {
-    queryId: 1,
-    params: [{ index: 1, value: matricola }],
-    maxRows: 200,
-  });
-}
-
-export async function spiLoadRequests() {
-  return http.post(QUERY_BASE, {
-    queryId: 23,
-    params: [],
-    maxRows: 200,
-  });
-}
-
-export async function spiInsertRequest(idFlusso: number, periodo: string, anno: number) {
-  return http.post(QUERY_BASE, {
-    queryId: 24,
-    params: [
-      { index: 1, value: idFlusso },
-      { index: 2, value: periodo },
-      { index: 3, value: anno },
-    ],
-  });
-}
-
-// DashboardFlows helpers
-export async function apiLoadFlows(matricola: string) {
-  return http.post(QUERY_BASE, {
-    queryId: 1,
-    params: [{ index: 1, value: matricola }],
-    maxRows: 200,
-  });
-}
-
-export async function apiLoadFlowQueries() {
-  return http.post(QUERY_BASE, {
-    queryId: 13,
-    params: [],
-    maxRows: 2000,
-  });
-}
 
 export async function apiBatchCounts(queryId: number, paramLikes: string[]) {
   const batch = paramLikes.map((pl) => ({
@@ -81,22 +38,6 @@ export async function apiBatchCounts(queryId: number, paramLikes: string[]) {
   });
 }
 
-// DashboardCount APIs
-export async function apiLoadFlowsSimple(matricola: string) {
-  return http.post(QUERY_BASE, {
-    queryId: 1,
-    params: [{ index: 1, value: matricola }],
-    maxRows: 100,
-  });
-}
-
-export async function apiLoadFlowQueriesSimple() {
-  return http.post(QUERY_BASE, {
-    queryId: 13,
-    params: [],
-    maxRows: 2000,
-  });
-}
 
 // Rights APIs
 export async function apiFetchRightsByMatricola(matricola: string) {
@@ -119,40 +60,6 @@ export async function apiLoadRoles() {
   return http.post(QUERY_BASE, { queryId: 3, params: [], maxRows: 100 });
 }
 
-// export async function apiLoadUsers() {
-//   return http.post(QUERY_BASE, { queryId: 6, params: [], maxRows: 100 });
-// }
-
-export async function apiLoadFlowsForSettings() {
-  return http.post(QUERY_BASE, { queryId: 8, params: [], maxRows: 100 });
-}
-
-export async function apiFetchFlussiForSettings() {
-  const { data } = await http.post(QUERY_BASE, {
-    queryId: 8,
-    params: [],
-    maxRows: 100,
-  });
-  const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
-  return rows.map((r: any) => ({
-    id: r.ID,
-    nome: r.DESCRIZIONE,
-    descrizioneLunga: r.DESCRIZIONE_LUNGA,
-    rangeType: r.ELABORAZIONE ?? "M",
-  }));
-}
-
-export async function apiLoadFlowPermissions() {
-  return http.post(QUERY_BASE, { queryId: 9, params: [], maxRows: 100 });
-}
-
-export async function apiLoadUserFlowRights(matricola: string) {
-  return http.post(QUERY_BASE, {
-    queryId: 10,
-    params: [{ index: 1, value: matricola }],
-    maxRows: 500,
-  });
-}
 
 // Update user basic data + role
 // Required params: matricola, nome, cognome, roelid (roleId)
@@ -176,46 +83,7 @@ export async function apiSaveUser(matricola: string, nome: string, cognome: stri
   });
 }
 
-export async function apiBatchInsertRights(batch: any[]) {
-  if (!batch.length) return { data: null } as any;
-  return http.post(QUERY_BASE, { queryId: 47, kind: "batchUpdate", batch });
-}
 
-export async function apiBatchUpdateRights(batch: any[]) {
-  if (!batch.length) return { data: null } as any;
-  return http.post(QUERY_BASE, { queryId: 27, kind: "batchUpdate", batch });
-}
-
-// FlowsSettings APIs
-export async function apiUpdateFlow(
-  id: number,
-  nome: string,
-  descrizioneLunga: string,
-  rangeType: string
-) {
-  // Modifica flusso (queryId 30)
-  return http.post(QUERY_BASE, {
-    queryId: 30,
-    params: [
-      { index: 1, value: nome },
-      { index: 2, value: descrizioneLunga },
-      { index: 3, value: rangeType },
-      { index: 4, value: id },
-    ],
-  });
-}
-
-export async function apiCreateFlow(nome: string, descrizioneLunga: string, rangeType: string) {
-  // Crea nuovo flusso (queryId 29)
-  return http.post(QUERY_BASE, {
-    queryId: 29,
-    params: [
-      { index: 1, value: nome },
-      { index: 2, value: descrizioneLunga },
-      { index: 3, value: rangeType },
-    ],
-  });
-}
 
 // Create new user with role (query 25)
 export async function apiAddUser(
@@ -241,66 +109,6 @@ export async function apiAddUser(
   });
 }
 
-// DashboardError APIs
-export async function apiLoadErrorTypes(flowId: number) {
-  return http.post(QUERY_BASE, {
-    queryId: 4,
-    params: [{ index: 1, value: flowId }],
-    maxRows: 100,
-  });
-}
-
-export async function apiRunDynamicQuery(
-  queryId: number,
-  periodo1: string | null,
-  periodo2: string | null
-) {
-  return http.post(QUERY_BASE, {
-    queryId,
-    params: [
-      { index: 1, value: periodo1 },
-      { index: 2, value: periodo2 },
-    ],
-    maxRows: 5000,
-  });
-}
-
-// SendReturnSetting APIs
-export async function apiLoadInvii(matricola: string) {
-  return http.post(QUERY_BASE, {
-    queryId: 31,
-    params: [{ index: 1, value: matricola }],
-    maxRows: 100,
-  });
-}
-
-export async function apiLoadRitorni(matricola: string) {
-  return http.post(QUERY_BASE, {
-    queryId: 32,
-    params: [{ index: 1, value: matricola }],
-  });
-}
-
-export async function apiBatchUpdateInvii(batch: any[]) {
-  if (!batch.length) return { data: null } as any;
-  return http.post(QUERY_BASE, { queryId: 35, kind: "batchUpdate", batch });
-}
-
-export async function apiBatchInsertInvii(batch: any[]) {
-  if (!batch.length) return { data: null } as any;
-  return http.post(QUERY_BASE, { queryId: 33, kind: "batch", batch });
-}
-
-export async function apiBatchUpdateRitorni(batch: any[]) {
-  if (!batch.length) return { data: null } as any;
-  // In origine usa headers espliciti; http.ts probabilmente imposta JSON. Li omettiamo qui.
-  return http.post(QUERY_BASE, { queryId: 36, kind: "batch", batch });
-}
-
-export async function apiBatchInsertRitorni(batch: any[]) {
-  if (!batch.length) return { data: null } as any;
-  return http.post(QUERY_BASE, { queryId: 34, kind: "batch", batch });
-}
 
 // SediSettings APIs
 // Estrazione sedi (queryId 9)
@@ -338,6 +146,133 @@ export async function apiCreateSede(payload: {
   });
 }
 
+// VlanSettings APIs
+// Estrazione VLAN (queryId 12)
+export async function apiLoadVlans() {
+  return http.post(QUERY_BASE, { queryId: 12, params: [], maxRows: 1000 });
+}
+
+// Inserimento VLAN (queryId 13)
+export async function apiCreateVlan(payload: {
+  ID_VLAN: number;
+  NOME_VLAN: string;
+  DESCRIZIONE: string;
+}) {
+  const p = payload;
+  return http.post(QUERY_BASE, {
+    queryId: 13,
+    params: [
+      { index: 1, value: p.ID_VLAN },
+      { index: 2, value: p.NOME_VLAN },
+      { index: 3, value: p.DESCRIZIONE },
+    ],
+  });
+}
+
+// Modifica VLAN (queryId 14)
+export async function apiUpdateVlan(id: number, payload: {
+  NOME_VLAN: string;
+  DESCRIZIONE: string;
+}) {
+  const p = payload;
+  return http.post(QUERY_BASE, {
+    queryId: 14,
+    params: [
+      { index: 1, value: p.NOME_VLAN },
+      { index: 2, value: p.DESCRIZIONE },
+      { index: 3, value: id },
+    ],
+  });
+}
+
+// Associazioni VLAN-Sedi
+// Select associazioni per VLAN (queryId 16)
+export async function apiLoadVlanSedi(idVlan: number | string) {
+  return http.post(QUERY_BASE, {
+    queryId: 16,
+    params: [{ index: 1, value: String(idVlan) }],
+    maxRows: 1000,
+  });
+}
+
+// Insert associazione VLAN->Sede (queryId 15)
+export async function apiInsertVlanSede(payload: {
+  ID_VLAN: string; // string per compatibilità con backend
+  ID_SEDE: string;
+  SUBNET: string;
+  MASK: string;
+  GATEWAY: string;
+  IP_START: string;
+  IP_END: string;
+  BROADCAST: string;
+  ID_ACL: string; // accetta '' se null
+  NOTE: string;
+}) {
+  const p = payload;
+
+  return http.post(QUERY_BASE, {
+    queryId: 15,
+    params: [
+      { index: 1, value: p.ID_VLAN },
+      { index: 2, value: p.ID_SEDE },
+      { index: 3, value: p.SUBNET },
+      { index: 4, value: p.MASK },
+      { index: 5, value: p.GATEWAY },
+      { index: 6, value: p.IP_START },
+      { index: 7, value: p.IP_END },
+      { index: 8, value: p.BROADCAST },
+      { index: 9, value: p.ID_ACL },
+      { index: 10, value: p.NOTE },
+    ],
+  });
+}
+
+// Update associazione VLAN->Sede (queryId 17)
+// SQL:
+// UPDATE VLAN_SEDI
+// SET SUBNET=?, MASK=?, GATEWAY=?, IP_START=?, IP_END=?, BROADCAST=?, ID_ACL=?, NOTE=?
+// WHERE ID_VLAN=? AND ID_SEDE=?
+export async function apiUpdateVlanSede(payload: {
+  ID_VLAN: string | number;
+  ID_SEDE: string | number; // mapped to ID_SEDE
+  SUBNET: string;
+  MASK: string;
+  GATEWAY: string;
+  IP_START: string;
+  IP_END: string;
+  BROADCAST: string;
+  ID_ACL: string | number | null; // allow null/''
+  NOTE: string | null;
+}) {
+  const p = payload as any;
+  return http.post(QUERY_BASE, {
+    queryId: 17,
+    params: [
+      { index: 1, value: p.SUBNET },
+      { index: 2, value: p.MASK },
+      { index: 3, value: p.GATEWAY },
+      { index: 4, value: p.IP_START },
+      { index: 5, value: p.IP_END },
+      { index: 6, value: p.BROADCAST },
+      { index: 7, value: p.ID_ACL },
+      { index: 8, value: p.NOTE },
+      { index: 9, value: String(p.ID_VLAN) },
+      { index: 10, value: String(p.ID_SEDE) },
+    ],
+  });
+}
+
+// Delete associazione VLAN->Sede (queryId 18)
+// DELETE FROM VLAN_SEDI WHERE ID_VLAN=? AND ID_SEDE=?
+export async function apiDeleteVlanSede(idVlan: string | number, idSede: string | number) {
+  return http.post(QUERY_BASE, {
+    queryId: 18,
+    params: [
+      { index: 1, value: String(idVlan) },
+      { index: 2, value: String(idSede) },
+    ],
+  });
+}
 // Modifica sede (queryId 11)
 export async function apiUpdateSede(id: number, payload: {
   NOME: string;
@@ -368,45 +303,12 @@ export async function apiUpdateSede(id: number, payload: {
   });
 }
 
-// FlowsSettings APIs
-export async function apiAddFlow(nome: string, descrizioneLunga: string, rangeType: string) {
-  return http.post(QUERY_BASE, {
-    queryId: 29,
-    params: [
-      { index: 1, value: nome },
-      { index: 2, value: descrizioneLunga },
-      { index: 3, value: rangeType },
-    ],
-  });
-}
 
-// // UsersSettings APIs
-// export async function apiDeleteUser(matricola: string) {
-//   await http.post(QUERY_BASE, {
-//     queryId: 91,
-//     params: [{ index: 1, value: matricola }],
-//   });
-//   await http.post(QUERY_BASE, {
-//     queryId: 92,
-//     params: [{ index: 1, value: matricola }],
-//   });
-// }
-
-// export async function apiLoadRoles() {
-//   return http.post(QUERY_BASE, { queryId: 7, params: [], maxRows: 100 });
-// }
 
 export async function apiLoadUsers() {
   return http.post(QUERY_BASE, { queryId: 6, params: [], maxRows: 100 });
 }
 
-// export async function apiLoadFlows() {
-//   return http.post(QUERY_BASE, { queryId: 8, params: [], maxRows: 1000 });
-// }
-
-// export async function apiLoadFlowPermissions() {
-//   return http.post(QUERY_BASE, { queryId: 9, params: [], maxRows: 1000 });
-// }
 
 export async function apiLoadUserRights(matricola: string) {
   return http.post(QUERY_BASE, {
@@ -416,12 +318,197 @@ export async function apiLoadUserRights(matricola: string) {
   });
 }
 
-export async function apiBatchInsertUserRights(batch: any[]) {
-  if (!batch.length) return { data: null } as any;
-  return http.post(QUERY_BASE, { queryId: 47, kind: "batchUpdate", batch });
+
+
+/* ================== Router Interfaces & ACL (queryId 19+) ================== */
+
+type QParam = { index: number; value: any };
+const toParams = (arr: any[]): QParam[] => arr.map((v, i) => ({ index: i + 1, value: v }));
+
+// Router Interfaces
+export async function apiLoadRouterInterfaces() {
+  // Select all router interfaces (queryId 19)
+  return http.post(QUERY_BASE, { queryId: 19, params: [], maxRows: 1000 });
 }
 
-export async function apiBatchUpdateUserRights(batch: any[]) {
-  if (!batch.length) return { data: null } as any;
-  return http.post(QUERY_BASE, { queryId: 27, kind: "batchUpdate", batch });
+// Lookup per associazione VLAN-SEDE da usare nella creazione interfaccia router
+export async function apiLoadRouterInterfaceAssociations() {
+  // Estrae ID, ID_VLAN, ID_SEDE, NOME_SEDE, NOME_VLAN, DESCRIZIONE_VLAN (queryId 30)
+  return http.post(QUERY_BASE, { queryId: 20, params: [], maxRows: 1000 });
+}
+
+export async function apiCreateRouterInterface(
+  payloadOrParams:
+    | QParam[]
+    | {
+        VLAN_SEDE_ID?: number | string; // preferito
+        ASSOC_ID?: number | string | null; // fallback dal form
+        NOME_INTERFACCIA: string;
+        DESCRIZIONE: string;
+        IP_ADDRESS: string;
+        SUBNET_MASK: string;
+        ID_ACL: number | string;
+        DEVICE_NAME: string;
+        CONFIG_TESTO: string;
+      }
+) {
+  // Insert router interface (queryId 20)
+  if (Array.isArray(payloadOrParams)) {
+    return http.post(QUERY_BASE, { queryId: 21, params: payloadOrParams });
+  }
+  const p = payloadOrParams;
+  const assocId = (p as any).VLAN_SEDE_ID ?? (p as any).ASSOC_ID;
+  const params = toParams([
+    assocId,
+    p.NOME_INTERFACCIA,
+    p.DESCRIZIONE,
+    p.IP_ADDRESS,
+    p.SUBNET_MASK,
+    p.ID_ACL,
+    p.DEVICE_NAME,
+    p.CONFIG_TESTO,
+  ]);
+  return http.post(QUERY_BASE, { queryId: 21, params });
+}
+
+export async function apiUpdateRouterInterface(
+  idOrParams: number | QParam[],
+  payload?: {
+    NOME_INTERFACCIA: string;
+    IP_ADDRESS: string;
+    SUBNET_MASK: string;
+    ID_ACL: string;
+    DEVICE_NAME: string;
+    DESCRIZIONE: string;
+    CONFIG_TESTO: string;
+  }
+) {
+  // Update router interface (queryId 21)
+  if (Array.isArray(idOrParams)) {
+    return http.post(QUERY_BASE, { queryId: 21, params: idOrParams });
+  }
+  if (payload == null) throw new Error("apiUpdateRouterInterface: payload required");
+  const p = payload;
+  const params = toParams([
+    p.NOME_INTERFACCIA,
+    p.IP_ADDRESS,
+    p.SUBNET_MASK,
+    p.ID_ACL,
+    p.DEVICE_NAME,
+    p.DESCRIZIONE,
+    p.CONFIG_TESTO,
+    idOrParams,
+  ]);
+  return http.post(QUERY_BASE, { queryId: 21, params });
+}
+
+// ACLs
+export async function apiLoadAcl() {
+  // Select ACLs or single ACL by number (queryId 22)
+
+  return http.post(QUERY_BASE, { queryId: 22, params: [], maxRows: 1000 });
+}
+
+export async function apiUpdateAcl(
+  payloadOrParams:
+    | QParam[]
+    | { ID: number; NUMERO: number | string; DESCRIZIONE: string; DIREZIONE: string; TESTO_CONFIG: string }
+) {
+  // Update ACL (queryId 23)
+  if (Array.isArray(payloadOrParams)) {
+    return http.post(QUERY_BASE, { queryId: 24, params: payloadOrParams });
+  }
+  const p = payloadOrParams;
+  const params = toParams([ p.DESCRIZIONE, p.DIREZIONE, p.TESTO_CONFIG,p.NUMERO]);
+  return http.post(QUERY_BASE, { queryId: 24, params });
+}
+
+export async function apiCreateAcl(
+
+  payloadOrParams:
+    | QParam[]
+    | { NUMERO: number | string; DESCRIZIONE: string; DIREZIONE: string; TESTO_CONFIG: string }
+) {
+  // Insert ACL (queryId 24)
+  if (Array.isArray(payloadOrParams)) {
+    return http.post(QUERY_BASE, { queryId: 23, params: payloadOrParams });
+  }
+  const p = payloadOrParams;
+  const params = toParams([p.NUMERO, p.DESCRIZIONE, p.DIREZIONE, p.TESTO_CONFIG]);
+  return http.post(QUERY_BASE, { queryId: 23, params });
+}
+
+export async function apiLoadAclRules(aclId: number | string) {
+  // Select rules by ACL (queryId 25)
+  return http.post(QUERY_BASE, {
+    queryId: 25,
+    params: [{ index: 1, value: String(aclId) }],
+    maxRows: 2000,
+  });
+}
+
+export async function apiUpdateAclRule(
+  payloadOrParams:
+    | QParam[]
+    | {
+        ID: number | string;
+        ACL_ID: number | string;
+        AZIONE: string;
+        PROTOCOLLO: string;
+        ORIGINE: string;
+        DESTINAZIONE: string;
+        PORTA_DESTINAZIONE: string;
+      }
+) {
+  // Update single ACL rule (queryId 26)
+  if (Array.isArray(payloadOrParams)) {
+    return http.post(QUERY_BASE, { queryId: 26, params: payloadOrParams });
+  }
+  const r = payloadOrParams;
+  const params = toParams([
+    r.ACL_ID,
+    r.AZIONE,
+    r.PROTOCOLLO,
+    r.ORIGINE,
+    r.DESTINAZIONE,
+    r.PORTA_DESTINAZIONE,
+    r.ID,
+  ]);
+  return http.post(QUERY_BASE, { queryId: 26, params });
+}
+
+export async function apiCreateAclRule(
+  payloadOrParams:
+    | QParam[]
+    | {
+        ACL_ID: number | string;
+        AZIONE: string;
+        PROTOCOLLO: string;
+        ORIGINE: string;
+        DESTINAZIONE: string;
+        PORTA_DESTINAZIONE: string;
+      }
+) {
+  // Insert single ACL rule (queryId 27)
+  if (Array.isArray(payloadOrParams)) {
+    return http.post(QUERY_BASE, { queryId: 27, params: payloadOrParams });
+  }
+  const r = payloadOrParams;
+  const params = toParams([
+    r.ACL_ID,
+    r.AZIONE,
+    r.PROTOCOLLO,
+    r.ORIGINE,
+    r.DESTINAZIONE,
+    r.PORTA_DESTINAZIONE,
+  ]);
+  return http.post(QUERY_BASE, { queryId: 27, params });
+}
+
+export async function apiDeleteAclRule(ruleId: number | string) {
+  // Delete rule by id (queryId 28)
+  return http.post(QUERY_BASE, {
+    queryId: 28,
+    params: [{ index: 1, value: String(ruleId) }],
+  });
 }

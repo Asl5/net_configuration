@@ -23,7 +23,7 @@
         <!-- Content -->
         <div
           class="p-4 flex-1"
-          :class="scrollable ? 'overflow-auto' : 'overflow-visible'"
+          :class="[scrollable ? 'overflow-auto' : 'overflow-visible', props.bodyClass]"
         >
           <slot />
         </div>
@@ -49,13 +49,15 @@ const props = withDefaults(
     title?: string;
     width?: string;
     height?: string;
-    scrollable?: boolean; // decidi tu se scroll o no
+    scrollable?: boolean;
+    bodyClass?: string; // eccola qui
   }>(),
   {
     title: "",
     width: "70vw",
     height: "80vh",
-    scrollable: true, // di default c’è scroll
+    scrollable: true,
+    bodyClass: "", // valore di default
   }
 );
 

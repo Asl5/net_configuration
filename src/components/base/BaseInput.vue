@@ -34,6 +34,7 @@
         @keyup="(e: KeyboardEvent) => emit('keyup', e)"
         @change="onChange"
         @blur="onBlur"
+        @paste="onPaste"
       >
         <template v-if="as === 'select'">
           <slot />
@@ -173,6 +174,8 @@ showPasswordToggle?: boolean;
     inputmode?: string;
     emailPattern?: string | RegExp; // NEW
     validateOn?: "input" | "blur" | "change"; // NEW
+    allowedChars?: RegExp | string; // NEW: filtra caratteri ammessi in digitazione
+    patternMessage?: string; // NEW: messaggio per pattern custom
     help?: string;
   }>(),
   {
@@ -206,6 +209,7 @@ showPasswordToggle?: boolean;
     borderColorValid: "border-green-500",
     emailPattern: "/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/", // NEW - semplice e robusta
     validateOn: "blur",
+    patternMessage: "Formato non valido",
     focusClass: "focus:ring-2 focus:ring-brand-green focus:border-transparent",
     focusClassValid: "focus:ring-2 focus:ring-green-500 focus:border-transparent",
     focusClassInvalid: "focus:ring-2 focus:ring-red-500 focus:border-transparent",
@@ -359,6 +363,27 @@ function onInput(e: Event) {
 }
 
 function onKeydown(e: KeyboardEvent) {
+  // filtro caratteri ammessi (se configurato)
+  if (props.allowedChars) {
+    const regex = props.allowedChars instanceof RegExp
+      ? props.allowedChars
+      : new RegExp(props.allowedChars as string);
+    const key = e.key;
+    const ctrlCmd = e.ctrlKey || e.metaKey;
+    const navKeys = [
+      "Backspace","Delete","Tab","Enter","Escape","ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"
+    ];
+    if (ctrlCmd && ["a","c","v","x","z","y"].includes(key.toLowerCase())) {
+      // allow shortcuts
+    } else if (navKeys.includes(key)) {
+      // allow navigation keys
+    } else if (key.length === 1) {
+      if (!regex.test(key)) {
+        e.preventDefault();
+        return;
+      }
+    }
+  }
   emit("keydown", e);
   if (e.key === "Enter") emit("enter", e);
 }
@@ -379,6 +404,20 @@ function onBlur(e: FocusEvent) {
   if (props.type === "email" && props.validateOn === "blur") {
     const val = (e.target as HTMLInputElement)?.value ?? "";
     validateEmail(val);
+  }
+}
+
+function onPaste(e: ClipboardEvent) {
+  if (!props.allowedChars) return;
+  const regex = props.allowedChars instanceof RegExp
+    ? props.allowedChars
+    : new RegExp(props.allowedChars as string);
+  const text = e.clipboardData?.getData("text") ?? "";
+  for (const ch of text) {
+    if (!regex.test(ch)) {
+      e.preventDefault();
+      break;
+    }
   }
 }
 
