@@ -11,14 +11,14 @@
         <ul class="flex-1">
           <li
             v-for="v in vlanList"
-            :key="v.ID_VLAN"
+            :key="v.ID"
             @click="onVlanClick(v)"
             class="px-4 py-2 cursor-pointer hover:bg-gray-300 text-gray-700"
             :class="
-              v.ID_VLAN === selectedVlan?.ID_VLAN ? 'bg-gray-400 font-semibold text-gray-100' : ''
+              v.ID === selectedVlan?.ID ? 'bg-gray-400 font-semibold text-gray-100' : ''
             "
           >
-            {{ v.NOME_VLAN }}
+            {{ v.ID_VLAN }}: {{ v.NOME_VLAN }} - {{ v.DESCRIZIONE }}
           </li>
         </ul>
       </aside>
@@ -106,7 +106,7 @@
   >
      <BaseLabel
         as="h1"
-        :text="`ID VLAN:  ${ associationForVlanId  }`"
+        :text="`ID VLAN:  ${ associationForVlanIdNumber  }`"
         size="lg"
         weight="bold" textColor="text-gray-700"
       />
@@ -267,7 +267,8 @@ import {
 } from "@/services/api";
 
 type Vlan = {
-  ID_VLAN: number;
+  ID_VLAN: string;
+  ID: number;
   NOME_VLAN: string;
   DESCRIZIONE: string;
 };
@@ -295,6 +296,7 @@ type AssocForm = {
 };
 const associationForms = ref<AssocForm[]>([]);
 const associationForVlanId = ref<number | null>(null);
+const associationForVlanIdNumber = ref<string | null>(null);
 const sediOptions = ref<{ label: string; value: number }[]>([]);
 
 /* ================== Computed ================== */
@@ -305,7 +307,8 @@ async function reload() {
   const { data } = await apiLoadVlans();
   const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
   vlanList.value = rows.map((r: any, i: number) => ({
-    ID_VLAN: r.ID_VLAN ?? i,
+    ID: r.ID ?? i,
+    ID_VLAN: r.ID_VLAN ?? "",
     NOME_VLAN: r.NOME_VLAN ?? "",
     DESCRIZIONE: r.DESCRIZIONE ?? "",
   }));
@@ -313,7 +316,7 @@ async function reload() {
 }
 
 function selectVlan(v: Vlan) {
-  console.log(v);
+
   selectedVlan.value = JSON.parse(JSON.stringify(v));
   originalVlan.value = JSON.parse(JSON.stringify(v));
   isDirty.value = false;
@@ -345,20 +348,21 @@ function discardChanges() {
 }
 
 async function openAssociateModal(v: Vlan) {
-  console.debug("openAssociateModal arg:", v);
-  const id = Number((v as any)?.ID_VLAN ?? (v as any)?.ID_VLAN);
+  console.log("fagae")
+  console.log("openAssociateModal arg:", v);
+   const idValn = String((v as any)?.ID_VLAN ?? (v as any)?.ID_VLAN);
+  const id = Number((v as any)?.ID ?? (v as any)?.ID);
   if (!id || Number.isNaN(id)) {
-    console.warn(
-      "ID_VLAN non valido in openAssociateModal:",
-      (v as any)?.ID_VLAN,
-      (v as any)?.ID_VLAN
-    );
+
     return;
   }
   associationForVlanId.value = id;
+  associationForVlanIdNumber.value = idValn;
   await loadSediOptions();
   // Carica associazioni esistenti (query 16)
+  console.log(id)
   const { data } = await apiLoadVlanSedi(id);
+  console.log(data)
   const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
   associationForms.value = rows.map((r: any) => ({
     ID_SEDE: r.ID_SEDE != null ? Number(r.ID_SEDE) : null,
@@ -391,30 +395,70 @@ async function loadSediOptions(force = false) {
 }
 
 // utils/ipTools.ts
-function calcNetworkDetails(subnet: string) {
+function calcNetworkDetails(subnet: string, maskInput?: string) {
   try {
-    const [ip, cidr] = subnet.split("/");
-    const cidrInt = parseInt(cidr, 10);
-    const mask = 0xffffffff << (32 - cidrInt);
-
-    const ipParts = ip.split(".").map((n) => parseInt(n, 10));
-    const ipInt = (ipParts[0] << 24) | (ipParts[1] << 16) | (ipParts[2] << 8) | ipParts[3];
-
-    const network = ipInt & mask;
-    const broadcast = network | (~mask >>> 0);
-
     const toIP = (num: number) =>
       [num >>> 24, (num >> 16) & 255, (num >> 8) & 255, num & 255].join(".");
 
+    const parseMaskToCidr = (maskStr?: string): number | null => {
+      if (!maskStr) return null;
+      // support numbers like "24"
+      const asNum = Number(maskStr);
+      if (!Number.isNaN(asNum) && asNum >= 0 && asNum <= 32) return asNum;
+      // dotted decimal
+      const parts = maskStr.split(".").map((n) => Number(n));
+      if (parts.length !== 4 || parts.some((n) => Number.isNaN(n) || n < 0 || n > 255)) return null;
+      let maskInt = (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3];
+      // validate contiguous ones
+      const inv = ~maskInt >>> 0;
+      if (((inv + 1) & inv) !== 0) return null; // not contiguous ones
+      let cidr = 0;
+      while (maskInt & 0x80000000) {
+        cidr++;
+        maskInt = (maskInt << 1) >>> 0;
+      }
+      return cidr;
+    };
+
+    // Accept formats: "ip/cidr", "ip" with optional maskInput, or default /24
+    let ipStr = subnet.trim();
+    let cidrStr: string | undefined;
+    if (ipStr.includes("/")) {
+      [ipStr, cidrStr] = ipStr.split("/");
+    }
+
+    const ipParts = ipStr.split(".").map((n) => Number(n));
+    if (ipParts.length !== 4 || ipParts.some((n) => Number.isNaN(n) || n < 0 || n > 255)) {
+      throw new Error("IP non valido");
+    }
+
+    let cidrInt: number | null = null;
+    if (cidrStr != null && cidrStr !== "") cidrInt = parseMaskToCidr(cidrStr);
+    if (cidrInt == null) cidrInt = parseMaskToCidr(maskInput ?? undefined);
+    if (cidrInt == null) cidrInt = 24; // default a /24 se non specificato
+
+    const mask = (cidrInt === 0 ? 0 : 0xffffffff << (32 - cidrInt)) >>> 0;
+
+    const ipInt = (ipParts[0] << 24) | (ipParts[1] << 16) | (ipParts[2] << 8) | ipParts[3];
+    const network = ipInt & mask;
+    const broadcast = network | (~mask >>> 0);
+
+    // Calcolo gateway e range host con salvaguardia per reti molto piccole
+    const totalHosts = Math.max(0, broadcast - network + 1);
+    const firstHost = totalHosts >= 2 ? network + 1 : network;
+    const secondHost = totalHosts >= 3 ? network + 2 : firstHost;
+    const lastHost = totalHosts >= 2 ? broadcast - 1 : broadcast;
+
     return {
       MASK: toIP(mask >>> 0),
-      GATEWAY: toIP(network + 1),
+      GATEWAY: toIP(firstHost),
       BROADCAST: toIP(broadcast),
-      IP_START: toIP(network + 2),
-      IP_END: toIP(broadcast - 1),
+      IP_START: toIP(secondHost),
+      IP_END: toIP(lastHost),
     };
   } catch (e) {
-    return { e };
+    console.log(e)
+    return { MASK: "", GATEWAY: "", BROADCAST: "", IP_START: "", IP_END: "" };
   }
 }
 
@@ -488,67 +532,6 @@ function cancelDeleteAssociation() {
   pendingDeleteIndex = null;
 }
 
-// async function saveAssociationAt(index: number) {
-//   const f = associationForms.value[index];
-//   console.log("dsagrh");
-//   console.log(associationForVlanId.value);
-//   console.log(f.ID_SEDE);
-//   try {
-//     if (!associationForVlanId.value || !f.ID_SEDE) return;
-//     const payload = {
-//       ID_VLAN: String(associationForVlanId.value),
-//       ID_SEDE: String(f.ID_SEDE),
-//       SUBNET: String(f.SUBNET ?? ""),
-//       MASK: String(f.MASK ?? ""),
-//       GATEWAY: String(f.GATEWAY ?? ""),
-//       IP_START: String(f.IP_START ?? ""),
-//       IP_END: String(f.IP_END ?? ""),
-//       BROADCAST: String(f.BROADCAST ?? ""),
-//       ID_ACL: f.ID_ACL != null ? String(f.ID_ACL) : "",
-//       NOTE: String(f.NOTE ?? ""),
-//     };
-//     console.log(payload);
-//     console.log("prova2222");
-//     console.log(f.isNew);
-//     if (f.isNew) {
-//       console.log("prova");
-//       await apiInsertVlanSede(payload);
-//       // opzionale: reload elenco esistente
-//       const { data } = await apiLoadVlanSedi(associationForVlanId.value);
-//       const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
-//       associationForms.value = rows.map((r: any) => ({
-//         ID_SEDE: r.ID_SEDE != null ? Number(r.ID_SEDE) : null,
-//         SUBNET: r.SUBNET ?? "",
-//         MASK: r.MASK ?? "",
-//         GATEWAY: r.GATEWAY ?? "",
-//         IP_START: r.IP_START ?? "",
-//         IP_END: r.IP_END ?? "",
-//         BROADCAST: r.BROADCAST ?? "",
-//         ID_ACL: r.ID_ACL != null ? Number(r.ID_ACL) : null,
-//         NOTE: r.NOTE ?? "",
-//         isNew: false,
-//       }));
-//     } else {
-//       await apiUpdateVlanSede(payload);
-//       const { data } = await apiLoadVlanSedi(associationForVlanId.value);
-//       const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
-//       associationForms.value = rows.map((r: any) => ({
-//         ID_SEDE: r.ID_SEDE != null ? Number(r.ID_SEDE) : null,
-//         SUBNET: r.SUBNET ?? "",
-//         MASK: r.MASK ?? "",
-//         GATEWAY: r.GATEWAY ?? "",
-//         IP_START: r.IP_START ?? "",
-//         IP_END: r.IP_END ?? "",
-//         BROADCAST: r.BROADCAST ?? "",
-//         ID_ACL: r.ID_ACL != null ? Number(r.ID_ACL) : null,
-//         NOTE: r.NOTE ?? "",
-//         isNew: false,
-//       }));
-//     }
-//   } catch (e) {
-//     console.log(e);
-//   }
-// }
 
 /* ================== Watch su modifiche ================== */
 watch(
@@ -563,11 +546,14 @@ watch(
 );
 
 watch(
-  () => associationForms.value.map((f) => f.SUBNET),
-  (newSubs, oldSubs) => {
-    newSubs.forEach((subnet, idx) => {
-      if (subnet && subnet !== oldSubs?.[idx]) {
-        const details = calcNetworkDetails(subnet);
+  () => associationForms.value.map((f) => ({ subnet: f.SUBNET, mask: f.MASK })),
+  (newVals, oldVals) => {
+    newVals.forEach((val, idx) => {
+      const prev = oldVals?.[idx];
+      const subnetChanged = prev?.subnet !== val.subnet;
+      const maskChanged = prev?.mask !== val.mask;
+      if (val.subnet && (subnetChanged || maskChanged)) {
+        const details = calcNetworkDetails(val.subnet, val.mask);
         Object.assign(associationForms.value[idx], details);
       }
     });
@@ -580,8 +566,13 @@ watch(
 // Salva tutte le associazioni presenti nel form (insert per isNew, altrimenti update)
 async function saveAllAssociations() {
   try {
+
+
     for (const f of associationForms.value) {
+       console.log(associationForVlanId.value)
+        console.log(f.ID_SEDE)
       if (!associationForVlanId.value || !f.ID_SEDE) continue;
+         console.log("ds<bsb")
       const payload = {
         ID_VLAN: String(associationForVlanId.value),
         ID_SEDE: String(f.ID_SEDE),
@@ -594,7 +585,9 @@ async function saveAllAssociations() {
         ID_ACL: f.ID_ACL != null ? String(f.ID_ACL) : "",
         NOTE: String(f.NOTE ?? ""),
       };
+       console.log(f.isNew)
       if (f.isNew) {
+
         await apiInsertVlanSede(payload);
       } else {
         await apiUpdateVlanSede(payload);
@@ -625,11 +618,11 @@ async function saveAllAssociations() {
 
 async function save() {
   if (!selectedVlan.value) return;
-  await apiUpdateVlan(selectedVlan.value.ID_VLAN, {
+  await apiUpdateVlan(selectedVlan.value.ID, {
     NOME_VLAN: selectedVlan.value.NOME_VLAN,
     DESCRIZIONE: selectedVlan.value.DESCRIZIONE,
   });
-  const idx = vlanList.value.findIndex((x) => x.ID_VLAN === selectedVlan.value?.ID_VLAN);
+  const idx = vlanList.value.findIndex((x) => x.ID === selectedVlan.value?.ID);
   if (idx !== -1) vlanList.value[idx] = JSON.parse(JSON.stringify(selectedVlan.value));
   originalVlan.value = JSON.parse(JSON.stringify(selectedVlan.value));
   isDirty.value = false;
@@ -639,7 +632,8 @@ async function save() {
 /* ================== Nuova VLAN ================== */
 const showAdd = ref(false);
 const newVlan = reactive<Vlan>({
-  ID_VLAN: 0,
+  ID: 0,
+  ID_VLAN: "",
   NOME_VLAN: "",
   DESCRIZIONE: "",
 });

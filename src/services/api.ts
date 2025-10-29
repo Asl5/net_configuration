@@ -154,7 +154,7 @@ export async function apiLoadVlans() {
 
 // Inserimento VLAN (queryId 13)
 export async function apiCreateVlan(payload: {
-  ID_VLAN: number;
+  ID_VLAN: string;
   NOME_VLAN: string;
   DESCRIZIONE: string;
 }) {
@@ -188,6 +188,7 @@ export async function apiUpdateVlan(id: number, payload: {
 // Associazioni VLAN-Sedi
 // Select associazioni per VLAN (queryId 16)
 export async function apiLoadVlanSedi(idVlan: number | string) {
+  console.log(idVlan)
   return http.post(QUERY_BASE, {
     queryId: 16,
     params: [{ index: 1, value: String(idVlan) }],
@@ -209,7 +210,7 @@ export async function apiInsertVlanSede(payload: {
   NOTE: string;
 }) {
   const p = payload;
-
+console.log(p)
   return http.post(QUERY_BASE, {
     queryId: 15,
     params: [
@@ -337,6 +338,18 @@ export async function apiLoadRouterInterfaceAssociations() {
   return http.post(QUERY_BASE, { queryId: 20, params: [], maxRows: 1000 });
 }
 
+
+// Panoramica VLAN (queryId 26)
+// Mostra per una VLAN tutte le sedi associate, le interfacce router e le ACL collegate
+export async function apiLoadVlanPanoramica(idVlan: number | string) {
+  return http.post(QUERY_BASE, {
+    queryId: 26,
+    params: [{ index: 1, value: String(idVlan) }],
+    maxRows: 5000,
+  });
+}
+
+
 export async function apiCreateRouterInterface(
   payloadOrParams:
     | QParam[]
@@ -374,32 +387,43 @@ export async function apiCreateRouterInterface(
 export async function apiUpdateRouterInterface(
   idOrParams: number | QParam[],
   payload?: {
+    VLAN_SEDE_ID?: number | string | null;
+    ASSOC_ID?: number | string | null; // alias possibile dal client
     NOME_INTERFACCIA: string;
+    DESCRIZIONE: string;
     IP_ADDRESS: string;
     SUBNET_MASK: string;
-    ID_ACL: string;
+    ID_ACL: string | number | null; // accetta numero o null
     DEVICE_NAME: string;
-    DESCRIZIONE: string;
+    DATA_AGGIORNAMENTO?: string; // opzionale; se assente mettiamo now
     CONFIG_TESTO: string;
   }
 ) {
   // Update router interface (queryId 21)
   if (Array.isArray(idOrParams)) {
-    return http.post(QUERY_BASE, { queryId: 21, params: idOrParams });
+    return http.post(QUERY_BASE, { queryId: 25, params: idOrParams });
   }
   if (payload == null) throw new Error("apiUpdateRouterInterface: payload required");
   const p = payload;
+  const vlanSedeId = (p as any).VLAN_SEDE_ID ?? (p as any).ASSOC_ID ?? null;
+  const idAcl = p.ID_ACL != null && p.ID_ACL !== "" ? Number(p.ID_ACL) : "";
+
+  // Ordine richiesto:
+  // VLAN_SEDE_ID, NOME_INTERFACCIA, DESCRIZIONE, IP_ADDRESS, SUBNET_MASK,
+  // ID_ACL, DEVICE_NAME, DATA_AGGIORNAMENTO, CONFIG_TESTO, ID
   const params = toParams([
+    vlanSedeId,
     p.NOME_INTERFACCIA,
+    p.DESCRIZIONE,
     p.IP_ADDRESS,
     p.SUBNET_MASK,
-    p.ID_ACL,
+    idAcl,
     p.DEVICE_NAME,
-    p.DESCRIZIONE,
+
     p.CONFIG_TESTO,
     idOrParams,
   ]);
-  return http.post(QUERY_BASE, { queryId: 21, params });
+  return http.post(QUERY_BASE, { queryId: 25, params });
 }
 
 // ACLs

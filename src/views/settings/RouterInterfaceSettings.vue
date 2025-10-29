@@ -32,42 +32,52 @@
                   (modifiche non salvate)
                 </span>
               </h2>
-
-              <div class="flex gap-2">
-                <BaseButton size="sm" variant="third" @click="openAclModal(selectedRouter)">
-                  ACL associata
-                </BaseButton>
-              </div>
             </div>
 
-            <div class="grid grid-cols-12 gap-4 items-start">
-              <div class="col-span-3">
-                <BaseInput v-model="selectedRouter.NOME_INTERFACCIA" label="Nome Interfaccia" />
-              </div>
-              <div class="col-span-3">
-                <BaseInput v-model="selectedRouter.IP_ADDRESS" label="IP Address" />
-              </div>
-              <div class="col-span-3">
-                <BaseInput v-model="selectedRouter.SUBNET_MASK" label="Mask" />
-              </div>
-              <div class="col-span-3">
-                <BaseInput v-model="selectedRouter.ID_ACL" label="ACL n° (in)" />
-              </div>
+            <div class="grid grid-cols-5 gap-4 items-start">
+              <BaseInput v-model="selectedRouter.NOME_INTERFACCIA" label="Nome Interfaccia" />
+
+              <BaseInput
+                v-model="selectedRouter.IP_ADDRESS"
+                label="IP Address"
+                :pattern="/^((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\.){3}(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)$/"
+                pattern-message="IP non valido"
+                validate-on="input"
+                :allowed-chars="/[0-9.]/"
+                inputmode="decimal"
+              />
+
+              <BaseInput
+                v-model="selectedRouter.SUBNET_MASK"
+                label="Mask"
+                :pattern="/^((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\.){3}(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)$/"
+                pattern-message="Mask non valida (es. 255.255.255.0)"
+                validate-on="input"
+                :allowed-chars="/[0-9.]/"
+                inputmode="decimal"
+              />
+
+              <BaseSelect
+                v-model="selectedRouter.ID_ACL"
+                :options="aclOptions"
+                label="ACL"
+                placeholder="Seleziona ACL"
+              />
+              <BaseInput v-model="selectedRouter.DEVICE_NAME" label="Apparato" />
             </div>
 
             <div class="grid grid-cols-2 gap-4 mt-4">
-              <BaseInput v-model="selectedRouter.DEVICE_NAME" label="Apparato" />
-              <BaseTextArea v-model="selectedRouter.DESCRIZIONE" label="Descrizione" />
-            </div>
 
-            <div>
-              <BaseTextArea
+              <BaseTextArea v-model="selectedRouter.DESCRIZIONE" label="Descrizione" rows="3"    class="text-xs"/>
+               <BaseTextArea
                 v-model="selectedRouter.CONFIG_TESTO"
                 label="Configurazione completa"
-                rows="6"
-                class="font-mono text-xs"
+                rows="3"
+                class="text-xs"
               />
             </div>
+
+
 
             <div class="flex mt-4 md:justify-end">
               <BaseButton size="sm" variant="primary" @click="saveRouter">Salva</BaseButton>
@@ -76,31 +86,47 @@
         </div>
 
         <div v-else class="hidden md:block text-gray-500">
-          Seleziona un’interfaccia dalla lista a sinistra.
+          Seleziona unï¿½?Tinterfaccia dalla lista a sinistra.
         </div>
       </main>
     </div>
 
     <!-- Modale nuova interfaccia -->
     <BaseModal v-model="showAddInterface" title="Nuova Interfaccia Router" height="65vh">
-   <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-  <BaseSelect
-    v-model="newRouter.ASSOC_ID"
-    :options="assocOptions"
-    label="Sede - VLAN"
-    placeholder="Seleziona associazione"
-  />
-  <BaseInput v-model="newRouter.NOME_INTERFACCIA" label="Nome interfaccia" />
-  <BaseInput v-model="newRouter.IP_ADDRESS" label="IP Address" />
-  <BaseInput v-model="newRouter.SUBNET_MASK" label="Mask" />
-  <BaseSelect
-    v-model="newRouter.ID_ACL"
-    :options="aclOptions"
-    label="ACL in ingresso"
-    placeholder="Seleziona ACL"
-/>
-  <BaseInput v-model="newRouter.DEVICE_NAME" label="Apparato" />
-</div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <BaseSelect
+          v-model="newRouter.ASSOC_ID"
+          :options="assocOptions"
+          label="Sede - VLAN"
+          placeholder="Seleziona associazione"
+        />
+        <BaseInput v-model="newRouter.NOME_INTERFACCIA" label="Nome interfaccia" />
+        <BaseInput
+          v-model="newRouter.IP_ADDRESS"
+          label="IP Address"
+          :pattern="/^((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\.){3}(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)$/"
+          pattern-message="IP non valido"
+          validate-on="input"
+          :allowed-chars="/[0-9.]/"
+          inputmode="decimal"
+        />
+        <BaseInput
+          v-model="newRouter.SUBNET_MASK"
+          label="Mask"
+          :pattern="/^((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\.){3}(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)$/"
+          pattern-message="Mask non valida (es. 255.255.255.0)"
+          validate-on="input"
+          :allowed-chars="/[0-9.]/"
+          inputmode="decimal"
+        />
+        <BaseSelect
+          v-model="newRouter.ID_ACL"
+          :options="aclOptions"
+          label="ACL in ingresso"
+          placeholder="Seleziona ACL"
+        />
+        <BaseInput v-model="newRouter.DEVICE_NAME" label="Apparato" />
+      </div>
 
       <BaseTextArea
         v-model="newRouter.DESCRIZIONE"
@@ -221,6 +247,16 @@
       </div>
     </BaseModal>
   </div>
+
+  <BaseModalAlert
+    :show="alert.show"
+    :title="alert.title"
+    :message="alert.message"
+    ok-text="OK"
+    :auto-close-ms="alert.isError ? undefined : 1800"
+    @confirm="closeAlert"
+    @cancel="closeAlert"
+  />
 </template>
 
 <script setup lang="ts">
@@ -231,6 +267,7 @@ import BaseInput from "@/components/base/BaseInput.vue";
 import BaseTextArea from "@/components/base/BaseTextArea.vue";
 import BaseModal from "@/components/base/BaseModal.vue";
 import BaseLabel from "@/components/base/BaseLabel.vue";
+import BaseModalAlert from "@/components/base/BaseModalAlert.vue";
 import BaseSelect from "@/components/base/BaseSelect.vue";
 import {
   apiLoadRouterInterfaces,
@@ -254,11 +291,11 @@ const isDirty = ref(false);
 
 const showAddInterface = ref(false);
 const newRouter = reactive({
-  ASSOC_ID: null ,
+  ASSOC_ID: null,
   NOME_INTERFACCIA: "",
   IP_ADDRESS: "",
   SUBNET_MASK: "",
-  ID_ACL: "",
+  ID_ACL: null as number | null,
   DEVICE_NAME: "",
   DESCRIZIONE: "",
   CONFIG_TESTO: "",
@@ -288,13 +325,30 @@ const selectedAcl = reactive<any>({
 const showAclRules = ref(false);
 const aclRules = ref<any[]>([]);
 
+// Alert stato
+const alert = reactive({ show: false, title: "", message: "", isError: false });
+function closeAlert() {
+  alert.show = false;
+}
+function showSuccess(message: string, title = "Operazione riuscita") {
+  alert.title = title;
+  alert.message = message;
+  alert.isError = false;
+  alert.show = true;
+}
+function showError(message: string, title = "Errore") {
+  alert.title = title;
+  alert.message = message;
+  alert.isError = true;
+  alert.show = true;
+}
+
 /* ======= Funzioni ======= */
 async function reloadRouters() {
   const { data } = await apiLoadRouterInterfaces();
   routerList.value = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
   if (routerList.value.length && !selectedRouter.value) selectRouter(routerList.value[0]);
 }
-
 
 /* ===== Stato ===== */
 const aclOptions = ref<{ value: number; label: string }[]>([]);
@@ -318,10 +372,14 @@ function openAddInterface() {
   });
 }
 
-
 function selectRouter(r: any) {
   selectedRouter.value = JSON.parse(JSON.stringify(r));
-  originalRouter.value = JSON.parse(JSON.stringify(r));
+  if (selectedRouter.value) {
+    const v = selectedRouter.value.ID_ACL;
+    selectedRouter.value.ID_ACL = v !== null && v !== undefined && v !== "" ? Number(v) : null;
+  }
+  // mantieni original allineato al tipo normalizzato per confronti corretti
+  originalRouter.value = JSON.parse(JSON.stringify(selectedRouter.value));
   isDirty.value = false;
 }
 
@@ -334,34 +392,44 @@ function onRouterClick(r: any) {
 
 async function saveRouter() {
   if (!selectedRouter.value) return;
-  await apiUpdateRouterInterface(selectedRouter.value.ID, selectedRouter.value);
-  isDirty.value = false;
-  await reloadRouters();
+  try {
+    await apiUpdateRouterInterface(selectedRouter.value.ID, selectedRouter.value);
+    isDirty.value = false;
+    await reloadRouters();
+    showSuccess("Interfaccia salvata correttamente.");
+  } catch (e: any) {
+    showError(e?.message || "Salvataggio interfaccia fallito.");
+  }
 }
-
 
 function closeAddInterface() {
   showAddInterface.value = false;
 }
 async function createRouter() {
-  await apiCreateRouterInterface(newRouter);
-  showAddInterface.value = false;
-  await reloadRouters();
-}
-
-/* ===== ACL / RULES ===== */
-async function openAclModal(router: any) {
-  if (!router.ID_ACL) return;
-  const { data } = await apiLoadAcl();
-  Object.assign(selectedAcl, data?.row ?? {});
-  showAcl.value = true;
+  const payload = {
+    ...newRouter,
+    ID_ACL: newRouter.ID_ACL != null ? Number(newRouter.ID_ACL) : null,
+  } as any;
+  try {
+    await apiCreateRouterInterface(payload);
+    showAddInterface.value = false;
+    await reloadRouters();
+    showSuccess("Interfaccia creata correttamente.");
+  } catch (e: any) {
+    showError(e?.message || "Creazione interfaccia fallita.");
+  }
 }
 
 async function saveAcl() {
   if (!selectedAcl.NUMERO) return;
-  if (selectedAcl.ID) await apiUpdateAcl(selectedAcl);
-  else await apiCreateAcl(selectedAcl);
-  showAcl.value = false;
+  try {
+    if (selectedAcl.ID) await apiUpdateAcl(selectedAcl);
+    else await apiCreateAcl(selectedAcl);
+    showAcl.value = false;
+    showSuccess("ACL salvata correttamente.");
+  } catch (e: any) {
+    showError(e?.message || "Salvataggio ACL fallito.");
+  }
 }
 
 async function openAclRulesModal() {
@@ -390,11 +458,16 @@ function removeAclRule(idx: number) {
 }
 
 async function saveAclRules() {
-  for (const r of aclRules.value) {
-    if (r.isNew) await apiCreateAclRule({ ...r, ACL_ID: selectedAcl.ID });
-    else await apiUpdateAclRule(r);
+  try {
+    for (const r of aclRules.value) {
+      if (r.isNew) await apiCreateAclRule({ ...r, ACL_ID: selectedAcl.ID });
+      else await apiUpdateAclRule(r);
+    }
+    showAclRules.value = false;
+    showSuccess("Regole ACL salvate correttamente.");
+  } catch (e: any) {
+    showError(e?.message || "Salvataggio regole ACL fallito.");
   }
-  showAclRules.value = false;
 }
 
 /* ===== Watch ===== */
@@ -407,5 +480,8 @@ watch(
   { deep: true }
 );
 
-onMounted(() => reloadRouters());
+onMounted(() => {
+  // Carica interfacce e opzioni ACL per i select
+  Promise.all([reloadRouters(), loadAclOptions()]);
+});
 </script>

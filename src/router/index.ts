@@ -31,12 +31,12 @@ const router = createRouter({
       },
       children: [
         {
-          path: "/dashboard-count",
-          name: "dashboard-count",
-          component: () => import("@/views/DashboardCount.vue"),
+          path: "/dashboard-vlan",
+          name: "dashboard-vlan",
+          component: () => import("@/views/DashboardVlan.vue"),
           meta: {
             public: true,
-            title: "Dashboard Invii",
+            title: "Dashboard Vlan",
             nav: true,
             parent: "dashboard",
             order: 1,
@@ -137,7 +137,7 @@ const router = createRouter({
             order: 3,
             parent: "settings",
             requiredRole: [1, 3],
-            icon: "flow",
+            icon: "vlan",
           },
         },
         {
@@ -151,7 +151,7 @@ const router = createRouter({
             order: 3,
             parent: "settings",
             requiredRole: [1, 3],
-            icon: "flow",
+            icon: "acl",
           },
         },
         {
@@ -165,7 +165,7 @@ const router = createRouter({
             order: 3,
             parent: "settings",
             requiredRole: [1, 3],
-            icon: "flow",
+            icon: "router",
           },
         },
       ],

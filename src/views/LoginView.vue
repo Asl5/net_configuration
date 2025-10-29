@@ -122,7 +122,7 @@ async function onSubmit() {
     }
     await nextTick();
     setTimeout(() => {
-      const redirect = route.query.redirect ? String(route.query.redirect) : "/dashboard-count";
+      const redirect = route.query.redirect ? String(route.query.redirect) : "/users";
       router.push(redirect);
     }, 0);
   } catch (e: any) {

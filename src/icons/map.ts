@@ -186,4 +186,8 @@ export const iconMap: Record<string, any> = {
   logout: ArrowRightStartOnRectangleIcon,
   // Sedi
   sedi: BuildingOfficeIcon,
+  // Rete
+  vlan: Squares2X2Icon,
+  acl: ShieldCheckIcon,
+  router: ServerStackIcon,
 };

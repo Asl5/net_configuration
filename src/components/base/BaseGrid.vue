@@ -1,11 +1,10 @@
 <template>
   <div
     :class="[
-      'rounded-xl relative flex flex-col',
+      'rounded-xl relative flex flex-col bg-white shadow-lg overflow-hidden',
       wrapperClass,
       bordered ? ['border', borderColorClass] : '',
       rounded ? 'rounded-xl' : 'rounded-none',
-      'bg-white shadow-lg',
     ]"
   >
     <!-- Contenitore scroll -->
@@ -13,7 +12,7 @@
       :class="['w-full flex-1', scrollX ? 'overflow-x-auto' : '', scrollY ? 'overflow-y-auto' : '']"
       :style="scrollY && yMaxHeight ? { maxHeight: yMaxHeight } : undefined"
     >
-      <table :class="[tableClass, 'divide-y', dividerColorClass]">
+      <table :class="[tableClass, 'min-w-full divide-y', dividerColorClass]">
         <!-- Header -->
         <thead :class="[headerBgClass, stickyHeader ? 'sticky top-0 z-10' : '', 'relative']">
           <!-- Pulsante refresh -->
@@ -28,125 +27,95 @@
             </button>
           </div>
 
-<!-- 🔹 Header principale -->
-<tr>
-<th
-  v-for="(col, ci) in columns"
-  :key="'h-' + col.key"
-  scope="col"
-  :colspan="col.subColumns ? col.subColumns.length : 1"
-  :rowspan="col.subColumns ? 1 : 2"
-  :class="[
-    'px-4 text-xs font-semibold uppercase tracking-wider',
-    dense ? 'py-2' : 'py-1',
-    headerTextClass,
-    alignClass(col.align),
-    col.width,
-    col.headerClass,
-    showRefresh && ci === columns.length - 1 ? 'pr-12' : '',
-  ]"
->
-  <div
-    :class="[
-      'w-full h-full',
-      showFilters
-        ? 'flex flex-col justify-between min-h-[3.5rem]'
-        : 'flex items-center justify-center',
-    ]"
-  >
-    <!-- Label -->
-    <span
-      class="text-gray-800 font-semibold w-full text-center"
-      :class="alignClass(col.align)"
-    >
-      {{ col.label }}
-    </span>
+          <tr>
+            <th
+              v-if="expandable"
+              class="w-10 px-2 text-xs font-semibold uppercase tracking-wider"
+              :class="[dense ? 'py-2' : 'py-3', headerTextClass]"
+            ></th>
 
-    <!-- Campo filtro -->
-    <input
-      v-if="showFilters && !col.subColumns"
-      v-model="filters[col.key]"
-      type="text"
-      placeholder=""
-      class="w-full border border-gray-300 rounded-md px-2 py-1 text-xs
-             focus:outline-none focus:ring-1 focus:ring-blue-400"
-    />
-  </div>
-</th>
+            <th
+              v-for="(col, ci) in flatColumns"
+              :key="'h-' + col.key"
+              scope="col"
+              :class="[
+                'px-4 text-xs font-semibold uppercase tracking-wider',
+                dense ? 'py-2' : 'py-3',
+                headerTextClass,
+                alignClass(col.align),
+                col.width,
+                col.headerClass,
+                showRefresh && ci === flatColumns.length - 1 ? 'pr-12' : '',
+              ]"
+            >
+              <div
+                :class="[
+                  'w-full h-full',
+                  showFilters
+                    ? 'flex flex-col justify-between min-h-[3.5rem]'
+                    : 'flex items-center justify-center',
+                ]"
+              >
+                <span class="text-gray-800 font-semibold w-full" :class="alignClass(col.align)">
+                  {{ col.label }}
+                </span>
 
+                <input
+                  v-if="showFilters"
+                  v-model="filters[col.key]"
+                  type="text"
+                  class="w-full border border-gray-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                />
+              </div>
+            </th>
 
-</tr>
-
-
-
-
-          <!-- Subheader -->
-          <tr v-if="hasSubHeaders">
-            <template v-for="col in columns" :key="'s-group-' + col.key">
-  <th
-  v-for="(col, ci) in columns"
-  :key="'h-' + col.key"
-  scope="col"
-  :colspan="col.subColumns ? col.subColumns.length : 1"
-  :rowspan="col.subColumns ? 1 : 2"
-  :class="[
-    'px-4 text-xs font-semibold uppercase tracking-wider',
-    dense ? 'py-2' : 'py-1',
-    headerTextClass,
-    alignClass(col.align),
-    col.width,
-    col.headerClass,
-    showRefresh && ci === columns.length - 1 ? 'pr-12' : '',
-  ]"
->
-  <div
-    :class="[
-      'h-full w-full flex flex-col',
-      showFilters ? 'justify-between min-h-[3.5rem]' : 'justify-center',
-      alignClass(col.align),
-    ]"
-  >
-    <!-- Label -->
-    <span
-      :class="[
-        'text-gray-800 font-semibold',
-        showFilters ? 'pb-1' : '',
-        alignClass(col.align),
-      ]"
-    >
-      {{ col.label }}
-    </span>
-
-    <!-- Campo filtro -->
-    <input
-      v-if="showFilters && !col.subColumns"
-      v-model="filters[col.key]"
-      type="text"
-      placeholder=""
-      class="w-full border border-gray-300 rounded-md px-2 py-1 text-xs
-             focus:outline-none focus:ring-1 focus:ring-blue-400 mt-auto"
-    />
-  </div>
-</th>
-
-
-            </template>
+            <th v-if="showActions" class="px-4" :class="dense ? 'py-2' : 'py-3'">
+              <span class="sr-only">{{ actionsLabel || "Azioni" }}</span>
+            </th>
           </tr>
         </thead>
 
         <!-- Body -->
         <tbody :class="['divide-y', dividerColorClass]">
+          <!-- Riga principale -->
           <tr
             v-for="(row, i) in pagedItems"
-            :key="i"
+            :key="'r-' + i"
             :class="[
               zebra ? (i % 2 === 0 ? zebraEvenClass : zebraOddClass) : '',
               'hover:bg-gray-50',
             ]"
           >
+            <!-- Expander -->
+            <td v-if="expandable" class="px-2" :class="dense ? 'py-2' : 'py-3'">
+              <button
+                type="button"
+                class="inline-flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100 border border-gray-200"
+                @click.stop="toggleRow(i)"
+              >
+                <svg
+                  v-if="!expanded[i]"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  class="w-3.5 h-3.5"
+                >
+                  <path fill="currentColor" d="M6 10h8v1H6zM10 6h1v8h-1z" />
+                </svg>
+                <svg
+                  v-else
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  class="w-3.5 h-3.5"
+                >
+                  <path fill="currentColor" d="M6 10h8v1H6z" />
+                </svg>
+              </button>
+            </td>
+
+            <!-- Celle -->
             <td
               v-for="col in flatColumns"
-              :key="col.key"
+              :key="'c-' + col.key + '-' + i"
               :class="[
                 'px-4',
                 dense ? 'py-2' : 'py-3',
@@ -169,6 +138,7 @@
               </slot>
             </td>
 
+            <!-- Azioni -->
             <td v-if="showActions" class="px-4" :class="dense ? 'py-2' : 'py-3'">
               <slot name="actions" :row="row" :index="i">
                 <div class="flex gap-2 justify-end">
@@ -200,6 +170,69 @@
               </slot>
             </td>
           </tr>
+
+          <!-- 🔹 Sottogriglia espandibile scrollabile con Tailwind -->
+          <template v-for="(row, i) in pagedItems" :key="'exp-wrap-' + i">
+            <tr
+              v-if="
+                expandable &&
+                expanded[i] &&
+                Array.isArray(row[expandField]) &&
+                row[expandField].length
+              "
+              :key="'exp-' + i"
+              class="bg-gray-50"
+            >
+              <td :colspan="colspanForExpand" class="px-6 py-3">
+                <slot name="expand" :parent="row" :rows="row[expandField]">
+                  <div class="text-xs text-gray-700">
+                    <div class="mb-2 font-semibold text-gray-800">
+                      Regole ACL ({{ row[expandField].length }})
+                    </div>
+
+                    <!-- 🔸 Contenitore scrollabile -->
+                    <div
+                      class="border border-gray-200 rounded-lg overflow-y-auto shadow-inner scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+                      :style="{ maxHeight: expandMaxHeight }"
+                    >
+                      <table class="min-w-full text-sm">
+                        <thead
+                          :class="[headerBgClass, 'sticky', 'top-0', 'border-gray-200', 'z-10']"
+                        >
+                          <tr>
+                            <th
+                              v-for="ec in expandColumnsResolved"
+                              :key="'eh-' + ec.key"
+                              class="text-left px-3 py-2 font-semibold text-gray-700 uppercase tracking-wide text-xs"
+                            >
+                              {{ ec.label }}
+                            </th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          <tr
+                            v-for="(r, ri) in row[expandField]"
+                            :key="'er-' + ri"
+                            class="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                          >
+                            <td
+                              v-for="ec in expandColumnsResolved"
+                              :key="'ec-' + ec.key + '-' + ri"
+                              class="px-3 py-2 text-gray-800 align-top"
+                            >
+                              <span v-if="ec.formatter" v-html="ec.formatter(r[ec.key], r)" />
+                              <span v-else>{{ r[ec.key] }}</span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </slot>
+              </td>
+            </tr>
+          </template>
         </tbody>
       </table>
     </div>
@@ -217,23 +250,11 @@
         Mostrati {{ startIndex + 1 }}–{{ endIndex }} di {{ totalItems }} elementi
       </p>
       <div class="flex gap-2">
-        <BaseButton
-          size="sm"
-          variant="secondary"
-          :disabled="page <= 1"
-          @click="prevPage"
-        >
-          <BaseIcon name="chevronLeft" class="w-4 h-4 mr-2" />
+        <BaseButton size="sm" variant="secondary" :disabled="page <= 1" @click="prevPage">
           Prev
         </BaseButton>
-        <BaseButton
-          size="sm"
-          variant="secondary"
-          :disabled="page >= totalPages"
-          @click="nextPage"
-        >
+        <BaseButton size="sm" variant="secondary" :disabled="page >= totalPages" @click="nextPage">
           Next
-          <BaseIcon name="chevronRight" class="w-4 h-4 ml-2" />
         </BaseButton>
       </div>
     </div>
@@ -241,13 +262,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import BaseButton from "@/components/base/BaseButton.vue";
-import BaseIcon from "@/components/base/BaseIcon.vue";
 import type { Align, GridColumn } from "@/grids/columns";
-import { onMounted } from "vue";
 
-type RowLike = Record<string, unknown>;
+type RowLike = Record<string, any>;
 
 type GridColumnGroup<T> = GridColumn<T> & {
   subColumns?: GridColumn<T>[];
@@ -262,7 +281,8 @@ const props = withDefaults(
     page?: number;
     pageSize?: number;
     showPagination?: boolean;
-showFilters?: boolean;
+    showFilters?: boolean;
+
     /** Stili/feature */
     bordered?: boolean;
     rounded?: boolean;
@@ -297,21 +317,30 @@ showFilters?: boolean;
     showEdit?: boolean;
     showRemove?: boolean;
     actionSize?: "xs" | "sm" | "md";
+
+    /** Espansione */
+    expandable?: boolean;
+    expandField?: string;
+    expandColumns?: GridColumn<RowLike>[];
+    expandMaxHeight?: string;
   }>(),
   {
     page: 1,
     pageSize: 20,
     showPagination: false,
+    showFilters: false,
+
     bordered: true,
     rounded: true,
     dense: false,
     stickyHeader: false,
     zebra: true,
-    scrollX: true,showFilters: false,
+    scrollX: true,
     scrollY: false,
     nowrap: false,
+
     wrapperClass: "overflow-hidden bg-white",
-    tableClass: "min-w-full",
+    tableClass: "",
     headerBgClass: "bg-gray-50",
     headerTextClass: "text-gray-500",
     rowTextClass: "text-gray-700",
@@ -319,12 +348,17 @@ showFilters?: boolean;
     zebraEvenClass: "bg-gray-50/40",
     borderColorClass: "border-gray-200",
     dividerColorClass: "divide-gray-200",
+
     showActions: false,
     actionsLabel: "",
     showDetails: false,
     showEdit: true,
     showRemove: true,
     actionSize: "xs",
+
+    expandable: false,
+    expandField: "_children",
+    expandMaxHeight: "16rem",
   }
 );
 
@@ -336,55 +370,31 @@ const emit = defineEmits<{
 }>();
 
 const filters = ref<Record<string, string>>({});
-
+const page = ref(props.page);
+const pageSize = ref(props.pageSize);
 
 onMounted(() => {
-  props.columns.forEach((col) => {
-    if (col.subColumns) {
-      col.subColumns.forEach((sub) => (filters.value[sub.key] = ""));
-    } else {
-      filters.value[col.key] = "";
-    }
-  });
+  // setup filtri per ogni colonna
+  flatColumns.value.forEach((c) => (filters.value[c.key] = ""));
 });
 
-const filteredItems = computed(() => {
-  return props.items.filter((row) =>
+const flatColumns = computed(() => props.columns.flatMap((c) => (c.subColumns ? c.subColumns : c)));
+
+const filteredItems = computed(() =>
+  props.items.filter((row) =>
     Object.entries(filters.value).every(([key, val]) => {
       if (!val) return true;
       const cellValue = String(row[key] ?? "").toLowerCase();
       return cellValue.includes(val.toLowerCase());
     })
-  );
-});
+  )
+);
 
 const totalItems = computed(() => filteredItems.value.length);
 const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)));
-
-const pagedItems = computed(() =>
-  filteredItems.value.slice(startIndex.value, endIndex.value)
-);
-
-
-const page = ref(props.page);
-const pageSize = ref(props.pageSize);
-
-// const totalItems = computed(() => props.items.length);
-// const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)));
-
 const startIndex = computed(() => (page.value - 1) * pageSize.value);
 const endIndex = computed(() => Math.min(startIndex.value + pageSize.value, totalItems.value));
-
-// const pagedItems = computed(() => props.items.slice(startIndex.value, endIndex.value));
-
-// 🔹 Flatten subColumns
-const flatColumns = computed(() =>
-  props.columns.flatMap((col) => (col.subColumns ? col.subColumns : col))
-);
-
-const hasSubHeaders = computed(() =>
-  props.columns.some((col) => col.subColumns && col.subColumns.length > 0)
-);
+const pagedItems = computed(() => filteredItems.value.slice(startIndex.value, endIndex.value));
 
 function prevPage() {
   if (page.value > 1) page.value--;
@@ -395,4 +405,30 @@ function nextPage() {
 function alignClass(a?: Align) {
   return a === "center" ? "text-center" : a === "right" ? "text-right" : "text-left";
 }
+
+/** Espansione */
+const expanded = ref<Record<number, boolean>>({});
+function toggleRow(i: number) {
+  expanded.value[i] = !expanded.value[i];
+}
+const colspanForExpand = computed(() => flatColumns.value.length + (props.expandable ? 1 : 0));
+const expandColumnsResolved = computed<GridColumn<RowLike>[]>(() => {
+  if (props.expandColumns?.length) return props.expandColumns;
+  // default colonne figli (ACL rules) con proprietà richieste
+  const make = (key: string, label: string): GridColumn<RowLike> => ({
+    key,
+    label,
+    align: "left",
+    width: "w-auto",
+    headerClass: "text-gray-700 font-medium px-2 py-1",
+    cellClass: "text-gray-800 px-2 py-1",
+  });
+  return [
+    make("AZIONE", "Azione"),
+    make("PROTOCOLLO", "Protocollo"),
+    make("ORIGINE", "Origine"),
+    make("DESTINAZIONE", "Destinazione"),
+    make("PORTA_DESTINAZIONE", "Porta"),
+  ];
+});
 </script>

@@ -33,8 +33,8 @@
             </h2>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <BaseInput v-model.number="selectedAcl.NUMERO" label="Numero ACL" type="number" disabled />
+          <div class="grid grid-cols-3 sm:grid-cols-3 gap-4">
+            <BaseInput v-model.number="selectedAcl.NUMERO" label="Numero ACL" type="text" disabled />
             <BaseSelect
               v-model="selectedAcl.DIREZIONE"
               label="Direzione"
@@ -42,15 +42,15 @@
                 { value: 'IN', label: 'IN' },
                 { value: 'OUT', label: 'OUT' }
               ]"
-            />
+            /><BaseInput v-model="selectedAcl.DESCRIZIONE" label="Descrizione" />
           </div>
 
-          <BaseInput v-model="selectedAcl.DESCRIZIONE" label="Descrizione" />
+
           <BaseTextArea
             v-model="selectedAcl.TESTO_CONFIG"
             label="Blocco configurazione"
             rows="10"
-            class="font-mono text-xs"
+            class="font-mono text-xs h-20"
           />
 
           <div class="flex mt-4 justify-end">
