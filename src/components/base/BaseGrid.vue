@@ -77,102 +77,101 @@
 
         <!-- Body -->
         <tbody :class="['divide-y', dividerColorClass]">
-          <!-- Riga principale -->
-          <tr
-            v-for="(row, i) in pagedItems"
-            :key="'r-' + i"
-            :class="[
-              zebra ? (i % 2 === 0 ? zebraEvenClass : zebraOddClass) : '',
-              'hover:bg-gray-50',
-            ]"
-          >
-            <!-- Expander -->
-            <td v-if="expandable" class="px-2" :class="dense ? 'py-2' : 'py-3'">
-              <button
-                type="button"
-                class="inline-flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100 border border-gray-200"
-                @click.stop="toggleRow(i)"
-              >
-                <svg
-                  v-if="!expanded[i]"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  class="w-3.5 h-3.5"
-                >
-                  <path fill="currentColor" d="M6 10h8v1H6zM10 6h1v8h-1z" />
-                </svg>
-                <svg
-                  v-else
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  class="w-3.5 h-3.5"
-                >
-                  <path fill="currentColor" d="M6 10h8v1H6z" />
-                </svg>
-              </button>
-            </td>
+          <!-- Riga principale + riga espansa come sibling per ogni elemento -->
+          <template v-for="(row, i) in pagedItems" :key="'wrap-' + i">
 
-            <!-- Celle -->
-            <td
-              v-for="col in flatColumns"
-              :key="'c-' + col.key + '-' + i"
+            <tr
               :class="[
-                'px-4',
-                dense ? 'py-2' : 'py-3',
-                'text-sm',
-                rowTextClass,
-                alignClass(col.align),
-                col.cellClass,
-                nowrap ? 'whitespace-nowrap' : 'whitespace-normal',
+                zebra ? (i % 2 === 0 ? zebraEvenClass : zebraOddClass) : '',
+                'hover:bg-gray-50',
               ]"
             >
-              <slot
-                :name="`cell-${col.key}`"
-                :value="row[col.key]"
-                :row="row"
-                :col="col"
-                :index="i"
+              <!-- Expander -->
+              <td v-if="expandable" class="px-2" :class="dense ? 'py-2' : 'py-3'">
+                <button
+                  type="button"
+                  class="inline-flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100 border border-gray-200"
+                  @click.stop="toggleRow(i)"
+                >
+                  <svg
+                    v-if="!expanded[i]"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    class="w-3.5 h-3.5"
+                  >
+                    <path fill="currentColor" d="M6 10h8v1H6zM10 6h1v8h-1z" />
+                  </svg>
+                  <svg
+                    v-else
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    class="w-3.5 h-3.5"
+                  >
+                    <path fill="currentColor" d="M6 10h8v1H6z" />
+                  </svg>
+                </button>
+              </td>
+
+              <!-- Celle -->
+              <td
+                v-for="col in flatColumns"
+                :key="'c-' + col.key + '-' + i"
+                :class="[
+                  'px-4',
+                  dense ? 'py-2' : 'py-3',
+                  'text-sm',
+                  rowTextClass,
+                  alignClass(col.align),
+                  col.cellClass,
+                  nowrap ? 'whitespace-nowrap' : 'whitespace-normal',
+                ]"
               >
-                <span v-if="col.formatter" v-html="col.formatter(row[col.key], row)" />
-                <span v-else v-html="row[col.key]" />
-              </slot>
-            </td>
+                <slot
+                  :name="`cell-${col.key}`"
+                  :value="row[col.key]"
+                  :row="row"
+                  :col="col"
+                  :index="i"
+                >
+                  <span v-if="col.formatter" v-html="col.formatter(row[col.key], row)" />
+                  <span v-else v-html="row[col.key]" />
+                </slot>
+              </td>
 
-            <!-- Azioni -->
-            <td v-if="showActions" class="px-4" :class="dense ? 'py-2' : 'py-3'">
-              <slot name="actions" :row="row" :index="i">
-                <div class="flex gap-2 justify-end">
-                  <BaseButton
-                    v-if="showDetails"
-                    :size="actionSize"
-                    variant="secondary"
-                    @click="emit('details', row, i)"
-                  >
-                    Dettagli
-                  </BaseButton>
-                  <BaseButton
-                    v-if="showEdit"
-                    :size="actionSize"
-                    variant="ghost"
-                    @click="emit('edit', row, i)"
-                  >
-                    Modifica
-                  </BaseButton>
-                  <BaseButton
-                    v-if="showRemove"
-                    :size="actionSize"
-                    variant="danger"
-                    @click="emit('remove', row, i)"
-                  >
-                    Rimuovi
-                  </BaseButton>
-                </div>
-              </slot>
-            </td>
-          </tr>
+              <!-- Azioni -->
+              <td v-if="showActions" class="px-4" :class="dense ? 'py-2' : 'py-3'">
+                <slot name="actions" :row="row" :index="i">
+                  <div class="flex gap-2 justify-end">
+                    <BaseButton
+                      v-if="showDetails"
+                      :size="actionSize"
+                      variant="secondary"
+                      @click="emit('details', row, i)"
+                    >
+                      Dettagli
+                    </BaseButton>
+                    <BaseButton
+                      v-if="showEdit"
+                      :size="actionSize"
+                      variant="ghost"
+                      @click="emit('edit', row, i)"
+                    >
+                      Modifica
+                    </BaseButton>
+                    <BaseButton
+                      v-if="showRemove"
+                      :size="actionSize"
+                      variant="danger"
+                      @click="emit('remove', row, i)"
+                    >
+                      Rimuovi
+                    </BaseButton>
+                  </div>
+                </slot>
+              </td>
+            </tr>
 
-          <!-- 🔹 Sottogriglia espandibile scrollabile con Tailwind -->
-          <template v-for="(row, i) in pagedItems" :key="'exp-wrap-' + i">
+            <!-- 🔹 Sottogriglia come riga separata subito sotto -->
             <tr
               v-if="
                 expandable &&
@@ -180,7 +179,6 @@
                 Array.isArray(row[expandField]) &&
                 row[expandField].length
               "
-              :key="'exp-' + i"
               class="bg-gray-50"
             >
               <td :colspan="colspanForExpand" class="px-6 py-3">
@@ -409,7 +407,11 @@ function alignClass(a?: Align) {
 /** Espansione */
 const expanded = ref<Record<number, boolean>>({});
 function toggleRow(i: number) {
-  expanded.value[i] = !expanded.value[i];
+  const isOpen = !!expanded.value[i];
+  // Chiudi tutte le altre righe
+  expanded.value = {};
+  // Se la riga non era aperta, aprila
+  if (!isOpen) expanded.value[i] = true;
 }
 const colspanForExpand = computed(() => flatColumns.value.length + (props.expandable ? 1 : 0));
 const expandColumnsResolved = computed<GridColumn<RowLike>[]>(() => {

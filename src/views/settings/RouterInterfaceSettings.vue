@@ -58,7 +58,7 @@
               />
 
               <BaseSelect
-                v-model="selectedRouter.ID_ACL"
+                v-model="selectedRouter.ID"
                 :options="aclOptions"
                 label="ACL"
                 placeholder="Seleziona ACL"
@@ -120,7 +120,7 @@
           inputmode="decimal"
         />
         <BaseSelect
-          v-model="newRouter.ID_ACL"
+          v-model="newRouter.ID"
           :options="aclOptions"
           label="ACL in ingresso"
           placeholder="Seleziona ACL"
@@ -295,7 +295,8 @@ const newRouter = reactive({
   NOME_INTERFACCIA: "",
   IP_ADDRESS: "",
   SUBNET_MASK: "",
-  ID_ACL: null as number | null,
+  // ID_ACL: null as number | null,
+  ID: null as number | null,
   DEVICE_NAME: "",
   DESCRIZIONE: "",
   CONFIG_TESTO: "",
@@ -305,13 +306,15 @@ const newRouter = reactive({
 const assocOptions = ref<{ value: number; label: string }[]>([]);
 async function loadAssocOptions() {
   const { data } = await apiLoadRouterInterfaceAssociations();
+  console.log(data)
   const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
   assocOptions.value = rows
     .map((r: any) => ({
       value: Number(r.ID),
-      label: `${r.NOME_SEDE ?? r.ID_SEDE} - ${r.NOME_VLAN ?? r.ID_VLAN}`,
+      label: `${r.ID_VLAN}: ${r.NOME_SEDE ?? r.ID_SEDE} - ${r.NOME_VLAN ?? r.ID_VLAN}`,
     }))
     .filter((o: any) => !Number.isNaN(o.value));
+    console.log(assocOptions)
 }
 
 /* ===== ACL ===== */
@@ -359,7 +362,7 @@ async function loadAclOptions() {
   const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
   aclOptions.value = rows
     .map((r: any) => ({
-      value: Number(r.NUMERO),
+      value: Number(r.ID),
       label: `#${r.NUMERO} - ${r.DESCRIZIONE ?? ""}`,
     }))
     .filter((o: any) => !Number.isNaN(o.value));
@@ -375,8 +378,8 @@ function openAddInterface() {
 function selectRouter(r: any) {
   selectedRouter.value = JSON.parse(JSON.stringify(r));
   if (selectedRouter.value) {
-    const v = selectedRouter.value.ID_ACL;
-    selectedRouter.value.ID_ACL = v !== null && v !== undefined && v !== "" ? Number(v) : null;
+    const v = selectedRouter.value.ID;
+    selectedRouter.value.ID = v !== null && v !== undefined && v !== "" ? Number(v) : null;
   }
   // mantieni original allineato al tipo normalizzato per confronti corretti
   originalRouter.value = JSON.parse(JSON.stringify(selectedRouter.value));
@@ -408,9 +411,10 @@ function closeAddInterface() {
 async function createRouter() {
   const payload = {
     ...newRouter,
-    ID_ACL: newRouter.ID_ACL != null ? Number(newRouter.ID_ACL) : null,
+    ID: newRouter.ID != null ? Number(newRouter.ID) : null,
   } as any;
   try {
+
     await apiCreateRouterInterface(payload);
     showAddInterface.value = false;
     await reloadRouters();

@@ -360,7 +360,7 @@ export async function apiCreateRouterInterface(
         DESCRIZIONE: string;
         IP_ADDRESS: string;
         SUBNET_MASK: string;
-        ID: number | string;
+        ID_ACL: number | string;
         DEVICE_NAME: string;
         CONFIG_TESTO: string;
       }
@@ -377,7 +377,7 @@ export async function apiCreateRouterInterface(
     p.DESCRIZIONE,
     p.IP_ADDRESS,
     p.SUBNET_MASK,
-    p.ID,
+    p.ID_ACL,
     p.DEVICE_NAME,
     p.CONFIG_TESTO,
   ]);
@@ -393,7 +393,7 @@ export async function apiUpdateRouterInterface(
     DESCRIZIONE: string;
     IP_ADDRESS: string;
     SUBNET_MASK: string;
-    ID_ACL: string | number | null; // presente nel modello ma NON usato per update
+    ID_ACL: string | number | null; // accetta numero o null
     DEVICE_NAME: string;
     DATA_AGGIORNAMENTO?: string; // opzionale; se assente mettiamo now
     CONFIG_TESTO: string;
@@ -406,17 +406,20 @@ export async function apiUpdateRouterInterface(
   if (payload == null) throw new Error("apiUpdateRouterInterface: payload required");
   const p = payload;
   const vlanSedeId = (p as any).VLAN_SEDE_ID ?? (p as any).ASSOC_ID ?? null;
+  const idAcl = p.ID_ACL != null && p.ID_ACL !== "" ? Number(p.ID_ACL) : "";
 
-  // Ordine richiesto senza ID_ACL:
+  // Ordine richiesto:
   // VLAN_SEDE_ID, NOME_INTERFACCIA, DESCRIZIONE, IP_ADDRESS, SUBNET_MASK,
-  // DEVICE_NAME, CONFIG_TESTO, ID
+  // ID_ACL, DEVICE_NAME, DATA_AGGIORNAMENTO, CONFIG_TESTO, ID
   const params = toParams([
     vlanSedeId,
     p.NOME_INTERFACCIA,
     p.DESCRIZIONE,
     p.IP_ADDRESS,
     p.SUBNET_MASK,
+    idAcl,
     p.DEVICE_NAME,
+
     p.CONFIG_TESTO,
     idOrParams,
   ]);
@@ -534,14 +537,3 @@ export async function apiDeleteAclRule(ruleId: number | string) {
   });
 }
 
-// Dispositivi per VLAN (e opzionalmente per sede)
-export async function apiLoadDevicesForVlan(idVlan: number | string, sede?: string) {
-  const params = [{ index: 1, value: String(idVlan) }] as { index: number; value: any }[];
-  if (sede && String(sede).trim().length) params.push({ index: 2, value: String(sede) });
-  // NOTE: imposta il queryId lato backend per questa select
-  return http.post(QUERY_BASE, {
-    queryId: 29,
-    params,
-    maxRows: 5000,
-  });
-}

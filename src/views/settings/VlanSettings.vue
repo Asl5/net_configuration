@@ -348,36 +348,37 @@ function discardChanges() {
 }
 
 async function openAssociateModal(v: Vlan) {
-  console.log("fagae")
-  console.log("openAssociateModal arg:", v);
-   const idValn = String((v as any)?.ID_VLAN ?? (v as any)?.ID_VLAN);
+  // Identifica VLAN corrente
+  const idValn = String((v as any)?.ID_VLAN ?? (v as any)?.ID_VLAN);
   const id = Number((v as any)?.ID ?? (v as any)?.ID);
-  if (!id || Number.isNaN(id)) {
+  if (!id || Number.isNaN(id)) return;
 
-    return;
-  }
+  // Svuota subito il form e apri la modale (campi vuoti)
+  associationForms.value = [getEmptyAssocForm()];
   associationForVlanId.value = id;
   associationForVlanIdNumber.value = idValn;
-  await loadSediOptions();
-  // Carica associazioni esistenti (query 16)
-  console.log(id)
-  const { data } = await apiLoadVlanSedi(id);
-  console.log(data)
-  const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
-  associationForms.value = rows.map((r: any) => ({
-    ID_SEDE: r.ID_SEDE != null ? Number(r.ID_SEDE) : null,
-    SUBNET: r.SUBNET ?? "",
-    MASK: r.MASK ?? "",
-    GATEWAY: r.GATEWAY ?? "",
-    IP_START: r.IP_START ?? "",
-    IP_END: r.IP_END ?? "",
-    BROADCAST: r.BROADCAST ?? "",
-    ID_ACL: r.ID_ACL != null ? Number(r.ID_ACL) : null,
-    NOTE: r.NOTE ?? "",
-    isNew: false,
-  }));
-  if (!associationForms.value.length) associationForms.value = [getEmptyAssocForm()];
   showAssociate.value = true;
+
+  // Carica opzioni sedi e, se presenti, le associazioni già configurate
+  await loadSediOptions();
+  const { data } = await apiLoadVlanSedi(id);
+  const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
+  if (rows.length) {
+    associationForms.value = rows.map((r: any) => ({
+      ID_SEDE: r.ID_SEDE != null ? Number(r.ID_SEDE) : null,
+      SUBNET: r.SUBNET ?? "",
+      MASK: r.MASK ?? "",
+      GATEWAY: r.GATEWAY ?? "",
+      IP_START: r.IP_START ?? "",
+      IP_END: r.IP_END ?? "",
+      BROADCAST: r.BROADCAST ?? "",
+      ID_ACL: r.ID_ACL != null ? Number(r.ID_ACL) : null,
+      NOTE: r.NOTE ?? "",
+      isNew: false,
+    }));
+  } else {
+    associationForms.value = [getEmptyAssocForm()];
+  }
 }
 
 async function loadSediOptions(force = false) {
