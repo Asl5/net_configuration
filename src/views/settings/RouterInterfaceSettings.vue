@@ -35,7 +35,7 @@
             </div>
 
             <div class="grid grid-cols-5 gap-4 items-start">
-              <BaseInput v-model="selectedRouter.NOME_INTERFACCIA" label="Nome Interfaccia" />
+              <BaseInput v-model="selectedRouter.NOME_INTERFACCIA" label="Interfaccia" />
 
               <BaseInput
                 v-model="selectedRouter.IP_ADDRESS"
@@ -58,7 +58,7 @@
               />
 
               <BaseSelect
-                v-model="selectedRouter.ID"
+                v-model="selectedRouter.ID_ACL"
                 :options="aclOptions"
                 label="ACL"
                 placeholder="Seleziona ACL"
@@ -93,12 +93,12 @@
 
     <!-- Modale nuova interfaccia -->
     <BaseModal v-model="showAddInterface" title="Nuova Interfaccia Router" height="65vh">
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      <div class="grid grid-cols-2 sm:grid-cols-6 gap-4">
         <BaseSelect
           v-model="newRouter.ASSOC_ID"
           :options="assocOptions"
           label="Sede - VLAN"
-          placeholder="Seleziona associazione"
+          placeholder="Sede-VLAN"
         />
         <BaseInput v-model="newRouter.NOME_INTERFACCIA" label="Nome interfaccia" />
         <BaseInput
@@ -120,24 +120,24 @@
           inputmode="decimal"
         />
         <BaseSelect
-          v-model="newRouter.ID"
+          v-model="newRouter.ID_ACL"
           :options="aclOptions"
-          label="ACL in ingresso"
+          label="ACL"
           placeholder="Seleziona ACL"
         />
         <BaseInput v-model="newRouter.DEVICE_NAME" label="Apparato" />
       </div>
-
+<div class="grid grid-cols-2 sm:grid-cols-2 gap-4 mt-1">
       <BaseTextArea
         v-model="newRouter.DESCRIZIONE"
         label="Descrizione"
-        class="w-full resize-y min-h-28"
+        class="w-full resize-y h-28"
       />
       <BaseTextArea
         v-model="newRouter.CONFIG_TESTO"
         label="Configurazione completa"
-        class="font-mono text-xs w-full resize-y min-h-32"
-      />
+        class="font-mono text-xs w-full resize-y h-28"
+      /></div>
       <div class="mt-3 flex justify-end gap-2 w-full">
         <BaseButton variant="secondary" @click="closeAddInterface">Annulla</BaseButton>
         <BaseButton variant="primary" @click="createRouter">Crea</BaseButton>
@@ -295,8 +295,7 @@ const newRouter = reactive({
   NOME_INTERFACCIA: "",
   IP_ADDRESS: "",
   SUBNET_MASK: "",
-  // ID_ACL: null as number | null,
-  ID: null as number | null,
+  ID_ACL: null as number | null,
   DEVICE_NAME: "",
   DESCRIZIONE: "",
   CONFIG_TESTO: "",
@@ -306,7 +305,7 @@ const newRouter = reactive({
 const assocOptions = ref<{ value: number; label: string }[]>([]);
 async function loadAssocOptions() {
   const { data } = await apiLoadRouterInterfaceAssociations();
-  console.log(data)
+
   const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
   assocOptions.value = rows
     .map((r: any) => ({
@@ -314,7 +313,7 @@ async function loadAssocOptions() {
       label: `${r.ID_VLAN}: ${r.NOME_SEDE ?? r.ID_SEDE} - ${r.NOME_VLAN ?? r.ID_VLAN}`,
     }))
     .filter((o: any) => !Number.isNaN(o.value));
-    console.log(assocOptions)
+
 }
 
 /* ===== ACL ===== */
@@ -349,7 +348,7 @@ function showError(message: string, title = "Errore") {
 /* ======= Funzioni ======= */
 async function reloadRouters() {
   const { data } = await apiLoadRouterInterfaces();
-  routerList.value = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
+    routerList.value = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
   if (routerList.value.length && !selectedRouter.value) selectRouter(routerList.value[0]);
 }
 
@@ -359,6 +358,7 @@ const aclOptions = ref<{ value: number; label: string }[]>([]);
 /* ===== Caricamento opzioni ACL ===== */
 async function loadAclOptions() {
   const { data } = await apiLoadAcl(); // deve restituire tutte le ACL (non una sola)
+
   const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
   aclOptions.value = rows
     .map((r: any) => ({
@@ -366,6 +366,7 @@ async function loadAclOptions() {
       label: `#${r.NUMERO} - ${r.DESCRIZIONE ?? ""}`,
     }))
     .filter((o: any) => !Number.isNaN(o.value));
+
 }
 
 /* ===== Apertura modale nuova interfaccia ===== */
@@ -380,10 +381,13 @@ function selectRouter(r: any) {
   if (selectedRouter.value) {
     const v = selectedRouter.value.ID;
     selectedRouter.value.ID = v !== null && v !== undefined && v !== "" ? Number(v) : null;
+    const vAcl = (selectedRouter.value as any).ID_ACL;
+    (selectedRouter.value as any).ID_ACL = vAcl !== null && vAcl !== undefined && vAcl !== "" ? Number(vAcl) : null;
   }
   // mantieni original allineato al tipo normalizzato per confronti corretti
   originalRouter.value = JSON.parse(JSON.stringify(selectedRouter.value));
   isDirty.value = false;
+
 }
 
 function onRouterClick(r: any) {
@@ -411,7 +415,7 @@ function closeAddInterface() {
 async function createRouter() {
   const payload = {
     ...newRouter,
-    ID: newRouter.ID != null ? Number(newRouter.ID) : null,
+    ID_ACL: newRouter.ID_ACL != null ? Number(newRouter.ID_ACL) : null,
   } as any;
   try {
 
@@ -437,8 +441,10 @@ async function saveAcl() {
 }
 
 async function openAclRulesModal() {
+
   if (!selectedAcl.NUMERO) return;
   const { data } = await apiLoadAclRules(selectedAcl.NUMERO);
+
   aclRules.value = Array.isArray(data?.rows) ? data.rows : [];
   showAclRules.value = true;
 }
@@ -488,4 +494,34 @@ onMounted(() => {
   // Carica interfacce e opzioni ACL per i select
   Promise.all([reloadRouters(), loadAclOptions()]);
 });
+
+// Debug: traccia il valore ACL e la corrispondenza con le options
+watch(
+  () => (selectedRouter.value as any)?.ID_ACL ?? null,
+  (newVal, oldVal) => {
+    const match = aclOptions.value.find((o) => o.value === newVal) || null;
+    console.log('[RouterInterfaceSettings] ACL v-model changed', {
+      newValue: newVal,
+      oldValue: oldVal ?? null,
+      optionsCount: aclOptions.value.length,
+      hasMatch: !!match,
+      matchedOption: match,
+    });
+  },
+  { immediate: true }
+);
+
+watch(
+  aclOptions,
+  (opts) => {
+    const id = (selectedRouter.value as any)?.ID_ACL ?? null;
+    const match = opts.find((o) => o.value === id) || null;
+    console.log('[RouterInterfaceSettings] ACL options updated', {
+      currentValue: id,
+      optionsCount: opts.length,
+      hasMatch: !!match,
+    });
+  },
+  { deep: false }
+);
 </script>

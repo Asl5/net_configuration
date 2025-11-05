@@ -74,7 +74,7 @@
     </div>
 
     <!-- Modale nuova VLAN -->
-    <BaseModal v-model="showAdd" title="Nuova Vlan" height="40vh">
+    <BaseModal v-model="showAdd" title="Nuova Vlan" height="40vh" max-width="50vw">
       <div class="grid grid-cols-2 md:grid-cols-2 gap-4">
         <BaseInput v-model.number="newVlan.ID_VLAN" label="ID VLAN" type="number" />
         <BaseInput v-model="newVlan.NOME_VLAN" label="Nome VLAN" />
@@ -385,14 +385,14 @@ async function loadSediOptions(force = false) {
   if (!force && sediOptions.value.length) return;
   const { data } = await apiLoadSedi();
   const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
-  console.log(rows);
+
   sediOptions.value = rows
     .map((r: any) => ({
       value: Number(r.ID),
       label: r.NOME ?? String(r.ID),
     }))
     .filter((o: { value: unknown }) => !Number.isNaN(o.value));
-  console.log(sediOptions);
+
 }
 
 // utils/ipTools.ts
@@ -451,6 +451,7 @@ function calcNetworkDetails(subnet: string, maskInput?: string) {
     const lastHost = totalHosts >= 2 ? broadcast - 1 : broadcast;
 
     return {
+      SUBNET: `${toIP(network)}\\${cidrInt}`,
       MASK: toIP(mask >>> 0),
       GATEWAY: toIP(firstHost),
       BROADCAST: toIP(broadcast),
@@ -459,7 +460,7 @@ function calcNetworkDetails(subnet: string, maskInput?: string) {
     };
   } catch (e) {
     console.log(e)
-    return { MASK: "", GATEWAY: "", BROADCAST: "", IP_START: "", IP_END: "" };
+    return { SUBNET: subnet, MASK: "", GATEWAY: "", BROADCAST: "", IP_START: "", IP_END: "" };
   }
 }
 
@@ -490,7 +491,7 @@ async function addAssociationForm() {
 const showDeleteAssocModal = ref(false);
 let pendingDeleteIndex: number | null = null;
 function removeAssociationForm(index: number) {
-  console.log("aega");
+
   const f = associationForms.value[index];
   if (!f) return;
   if (f.isNew) {
@@ -546,21 +547,7 @@ watch(
   { deep: true }
 );
 
-watch(
-  () => associationForms.value.map((f) => ({ subnet: f.SUBNET, mask: f.MASK })),
-  (newVals, oldVals) => {
-    newVals.forEach((val, idx) => {
-      const prev = oldVals?.[idx];
-      const subnetChanged = prev?.subnet !== val.subnet;
-      const maskChanged = prev?.mask !== val.mask;
-      if (val.subnet && (subnetChanged || maskChanged)) {
-        const details = calcNetworkDetails(val.subnet, val.mask);
-        Object.assign(associationForms.value[idx], details);
-      }
-    });
-  },
-  { deep: true }
-);
+// Calcolo rete e normalizzazione SUBNET spostati in saveAllAssociations()
 
 /* ================== Salvataggio ================== */
 
@@ -570,23 +557,24 @@ async function saveAllAssociations() {
 
 
     for (const f of associationForms.value) {
-       console.log(associationForVlanId.value)
-        console.log(f.ID_SEDE)
+
       if (!associationForVlanId.value || !f.ID_SEDE) continue;
-         console.log("ds<bsb")
+
+      // Calcolo dettagli rete al salvataggio
+      const details = calcNetworkDetails(String(f.SUBNET ?? ""), String(f.MASK ?? ""));
       const payload = {
         ID_VLAN: String(associationForVlanId.value),
         ID_SEDE: String(f.ID_SEDE),
-        SUBNET: String(f.SUBNET ?? ""),
-        MASK: String(f.MASK ?? ""),
-        GATEWAY: String(f.GATEWAY ?? ""),
-        IP_START: String(f.IP_START ?? ""),
-        IP_END: String(f.IP_END ?? ""),
-        BROADCAST: String(f.BROADCAST ?? ""),
+        SUBNET: String(details.SUBNET ?? f.SUBNET ?? ""),
+        MASK: String(details.MASK ?? f.MASK ?? ""),
+        GATEWAY: String(details.GATEWAY ?? f.GATEWAY ?? ""),
+        IP_START: String(details.IP_START ?? f.IP_START ?? ""),
+        IP_END: String(details.IP_END ?? f.IP_END ?? ""),
+        BROADCAST: String(details.BROADCAST ?? f.BROADCAST ?? ""),
         ID_ACL: f.ID_ACL != null ? String(f.ID_ACL) : "",
         NOTE: String(f.NOTE ?? ""),
       };
-       console.log(f.isNew)
+
       if (f.isNew) {
 
         await apiInsertVlanSede(payload);

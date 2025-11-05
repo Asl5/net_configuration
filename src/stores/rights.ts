@@ -33,7 +33,7 @@ export const useRightsStore = defineStore("rights", {
         this.matricola = matricola;
         const data: RightsPayload = await fetchRightsByMatricola(matricola);
         // DEBUG backend payload
-console.log(data)
+
 
         this.rights = data.rights ?? [];
 

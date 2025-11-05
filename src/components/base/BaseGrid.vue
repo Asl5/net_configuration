@@ -29,7 +29,7 @@
 
           <tr>
             <th
-              v-if="expandable"
+              v-if="anyExpandable"
               class="w-10 px-2 text-xs font-semibold uppercase tracking-wider"
               :class="[dense ? 'py-2' : 'py-3', headerTextClass]"
             ></th>
@@ -87,8 +87,9 @@
               ]"
             >
               <!-- Expander -->
-              <td v-if="expandable" class="px-2" :class="dense ? 'py-2' : 'py-3'">
+              <td v-if="anyExpandable" class="px-2" :class="dense ? 'py-2' : 'py-3'">
                 <button
+                  v-if="hasExpandedData(row)"
                   type="button"
                   class="inline-flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100 border border-gray-200"
                   @click.stop="toggleRow(i)"
@@ -173,12 +174,7 @@
 
             <!-- 🔹 Sottogriglia come riga separata subito sotto -->
             <tr
-              v-if="
-                expandable &&
-                expanded[i] &&
-                Array.isArray(row[expandField]) &&
-                row[expandField].length
-              "
+              v-if=" anyExpandable && expanded[i] && hasExpandedData(row) "
               class="bg-gray-50"
             >
               <td :colspan="colspanForExpand" class="px-6 py-3">
@@ -413,7 +409,21 @@ function toggleRow(i: number) {
   // Se la riga non era aperta, aprila
   if (!isOpen) expanded.value[i] = true;
 }
-const colspanForExpand = computed(() => flatColumns.value.length + (props.expandable ? 1 : 0));
+const anyExpandable = computed(
+  () => props.expandable && props.items.some((r) => Array.isArray(r[props.expandField]) && r[props.expandField].length)
+);
+const colspanForExpand = computed(() => flatColumns.value.length + (anyExpandable.value ? 1 : 0));
+function hasExpandedData(row: RowLike) {
+  const rows = row?.[props.expandField as string];
+  if (!Array.isArray(rows) || !rows.length) return false;
+  return rows.some((r: any) =>
+    expandColumnsResolved.value.some((ec) => String(r?.[ec.key] ?? '').trim().length > 0)
+  );
+}
+
+// const anyExpandable = computed(
+//   () => props.expandable && Array.isArray(props.items) && (props.items as RowLike[]).some((r) => hasExpandedData(r))
+// );
 const expandColumnsResolved = computed<GridColumn<RowLike>[]>(() => {
   if (props.expandColumns?.length) return props.expandColumns;
   // default colonne figli (ACL rules) con proprietà richieste
@@ -434,3 +444,5 @@ const expandColumnsResolved = computed<GridColumn<RowLike>[]>(() => {
   ];
 });
 </script>
+
+

@@ -41,7 +41,7 @@
           </div>
 
           <!-- Tabs -->
-          <div v-else class="flex flex-col gap-4 h-[calc(100vh-180px)]">
+          <div v-else class="flex flex-col gap-4 h-full">
             <!-- Tab bar -->
             <div class="flex items-center gap-2 border-b border-gray-300">
               <button
@@ -88,7 +88,7 @@
             <!-- ======== TAB 2: STRUTTURA ======== -->
             <div
               v-if="activeTab === 'structure'"
-              class="flex flex-col justify-start items-start bg-white p-6 rounded-xl shadow w-full overflow-auto h-full"
+              class="flex flex-col justify-start items-start bg-white p-6 rounded-xl shadow w-full overflow-auto h-full text-[15px]"
             >
               <div v-if="false" class="flex flex-col space-y-2">
                 <!-- Sede -->
@@ -149,39 +149,42 @@
                   </div>
                 </div>
               </div>
-              <!-- Nuova struttura: sede -> vlan -> interfacce -> regole (chip verdi) -->
-              <div class="flex flex-col space-y-6 w-full">
+              <!-- Vista ad albero centrale con SVG (sempre espansa) -->
+              <TopologyTree :groups="structureGroups" @open-interface="onOpenInterface" />
+
+              <!-- Nuova struttura: sede -> vlan -> interfacce -> regole (legacy, nascosta) -->
+              <div v-if="false" class="flex flex-col space-y-6 w-full">
                 <div
                   v-for="(group, gi) in structureGroups"
                   :key="`struct-${gi}`"
                   class="flex flex-col space-y-3"
                 >
-                  <!-- Sede -->
-                  <div class="flex items-center space-x-3">
+                  <!-- Sede (toggle) -->
+                  <div class="flex items-center gap-2 cursor-pointer select-none" @click="toggleSede(group.sede)">
+                    <span class="text-blue-200">{{ isSedeOpen(group.sede) ? '▼' : '►' }}</span>
                     <div
-                      class="p-2 rounded-md font-semibold text-sm w-52 bg-blue-300 text-blue-800 border border-blue-600 shadow-sm"
+                      class="p-2 rounded-md font-semibold text-sm w-52 bg-blue-600 text-white border border-blue-600 shadow"
                     >
-                      {{ group.sede }}
+                      🏥 {{ group.sede }}
                     </div>
                   </div>
                   <!-- VLAN per sede -->
-                  <div class="flex flex-col space-y-2 ml-6">
+                  <div class="flex flex-col space-y-2 ml-6" v-show="isSedeOpen(group.sede)">
                     <div
                       v-for="(vlan, vi) in group.vlans"
                       :key="`v-${vi}`"
                       class="flex flex-col space-y-2"
                     >
-                      <div class="flex items-center space-x-4">
+                      <div class="flex items-center space-x-4 cursor-pointer select-none" @click="toggleVlan(group.sede, vlan)">
                         <div class="h-5 w-1 bg-gray-300"></div>
                         <div
-                          class="p-2 rounded-md font-semibold text-sm w-64 bg-blue-50 text-blue-800 border border-blue-300 shadow-sm"
+                          class="p-2 rounded-md font-semibold text-sm w-64 bg-blue-300 text-white border border-blue-300 shadow"
                         >
-                          VLAN {{ vlan.id }} - {{ vlan.name }}
+                         🌐 VLAN {{ vlan.id }} - {{ vlan.name }}
                         </div>
-                        <BaseButton size="xs" variant="secondary" @click="openDevicesModal(group.sede)">Dispositivi</BaseButton>
                       </div>
                       <!-- Interfacce per VLAN (sotto la card VLAN) -->
-                      <div class="flex flex-col space-y-2 ml-12 mt-2">
+                      <div class="flex flex-col space-y-2 ml-12 mt-2" v-show="isVlanOpen(group.sede, vlan)">
                         <div
                           class="flex items-center space-x-3"
                           v-for="(iface, ii) in vlan.interfaces"
@@ -189,21 +192,21 @@
                         >
                           <div class="h-5 w-1 bg-gray-300"></div>
                           <div
-                            class="p-2 rounded-md font-semibold text-xs w-44 cursor-pointer bg-gray-300 text-gray-800 border border-gray-600 shadow-sm hover:bg-gray-100"
+                            class="p-2 rounded-md font-semibold text-xs w-44 cursor-pointer bg-amber-500 text-white border border-amber-500 shadow hover:bg-amber-600"
                             @click="showInterface(group.sede, vlan.id, vlan.name, iface)"
                           >
-                            {{ iface }}
+                            🧱 {{ iface }}
                           </div>
                         </div>
                       </div>
                       <!-- Regole raggruppate per categoria (es. "PERMIT UDP", "DENY") con barra verticale e indentazione coerente -->
-                      <div class="flex items-start space-x-3 ml-20 mt-2">
+                      <div class="flex items-start space-x-3 ml-20 mt-2" v-show="isVlanOpen(group.sede, vlan)">
                         <div class="mt-2 h-5 w-1 bg-gray-300"></div>
                         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                           <div
                             v-for="cat in groupRulesByLabel(vlan.rules)"
                             :key="cat.label"
-                            class="p-2 px-3 rounded-md text-xs cursor-pointer shadow-sm transition-colors border"
+                            class="p-2 px-3 rounded-md text-xs cursor-pointer transition-colors border"
                             :class="cat.color"
                             @click="showCategory(cat.label, cat.items)"
                           >
@@ -219,26 +222,48 @@
 
             <!-- ======== TAB 3: DISPOSITIVI ======== -->
             <div v-if="activeTab === 'devices'" class="flex-1 bg-white rounded-xl shadow p-3 overflow-hidden">
-              <div class="mb-2 text-sm text-gray-600">
-                Dispositivi per VLAN selezionata
+              <div class="mb-2 text-sm text-gray-600">Dispositivi per VLAN selezionata</div>
+              <div class="space-y-3">
+                <div
+                  v-for="key in deviceGroupKeys"
+                  :key="`dev-${key}`"
+                  class="border rounded-lg overflow-hidden"
+                  :class="expandedDeviceGroups[key] ? 'border-blue-300' : 'border-gray-200'"
+                >
+                  <button
+                    class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium border-l-4"
+                    :class="expandedDeviceGroups[key]
+                      ? 'bg-blue-100 text-blue-900 border-blue-400'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-800 border-gray-300'"
+                    @click="toggleDeviceGroup(key)"
+                  >
+                    <span>
+                      {{ parseDeviceKey(key).sede || '-' }} - VLAN {{ (selectedVlan as any)?.ID ?? (selectedVlan as any)?.ID_VLAN }} {{ parseDeviceKey(key).name }}
+                  </span>
+                    <span>{{ expandedDeviceGroups[key] ? 'Nascondi' : 'Mostra' }}</span>
+                  </button>
+                  <div v-show="expandedDeviceGroups[key]" class="overflow-auto max-h-96 p-2">
+                    <div v-if="loadingDevice[key]" class="text-gray-500 italic p-2">Caricamento dispositivi...</div>
+                    <BaseGrid
+                      v-else-if="(deviceRowsByGroup[key] || []).length"
+                      :items="deviceRowsByGroup[key]"
+                      :columns="deviceColumns"
+                      :show-pagination="true"
+                      :page-size="10"
+                      bordered
+                      sticky-header
+                      y-max-height="calc(100vh-320px)"
+                      header-bg-class="bg-gray-300"
+                      header-text-class="text-gray-800"
+                      row-text-class="text-gray-800"
+                      zebra-even-class="bg-gray-50"
+                      :showRefresh="false"
+                      zebra
+                    />
+                    <div v-else class="text-gray-500 italic p-2">Nessun dispositivo trovato.</div>
+                  </div>
+                </div>
               </div>
-              <BaseGrid
-                v-if="deviceRows.length"
-                :items="deviceRows"
-                :columns="deviceColumns"
-                :show-pagination="true"
-                :page-size="10"
-                bordered
-                sticky-header
-                y-max-height="calc(100vh-280px)"
-                header-bg-class="bg-gray-300"
-                header-text-class="text-gray-800"
-                row-text-class="text-gray-800"
-                zebra-even-class="bg-gray-50"
-                :showRefresh="false"
-                zebra
-              />
-              <div v-else class="text-gray-500 italic">Nessun dispositivo trovato per questa VLAN.</div>
             </div>
 
             <!-- ======== TAB 4: HEATMAP ======== -->
@@ -278,23 +303,27 @@
                   </tbody>
                 </table>
               </div>
-              <!-- Accordion per più gruppi (es. più ACL) -->
+              <!-- Accordion per più gruppi (single-open, evidenzia selezionato) -->
               <div v-else class="space-y-3">
                 <div
                   v-for="key in heatmapGroupKeys"
                   :key="`acl-${key}`"
                   class="border rounded-lg overflow-hidden"
+                  :class="expandedHeatmaps[key] ? 'border-blue-300' : 'border-gray-200'"
                 >
                   <button
-                    class="w-full flex items-center justify-between px-3 py-2 bg-gray-100 hover:bg-gray-200 text-sm font-medium"
+                    class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium border-l-4"
+                    :class="expandedHeatmaps[key]
+                      ? 'bg-blue-100 text-blue-900 border-blue-400'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-800 border-gray-300'"
                     @click="toggleHeatmap(key)"
                   >
                     <span>
                       {{ parseHeatmapKey(key).sede || '-' }} - VLAN {{ parseHeatmapKey(key).id }} {{ parseHeatmapKey(key).name }}
                     </span>
-                    <span>{{ expandedHeatmaps[key] ? "Nascondi" : "Mostra" }}</span>
+                    <span>{{ expandedHeatmaps[key] ? 'Nascondi' : 'Mostra' }}</span>
                   </button>
-                  <div v-show="expandedHeatmaps[key]" class="overflow-x-auto p-2">
+                  <div v-show="expandedHeatmaps[key]" class="overflow-auto max-h-96 p-2">
                     <table class="min-w-full border border-gray-200 rounded-lg text-sm">
                       <thead class="bg-gray-100 text-gray-700">
                         <tr>
@@ -400,6 +429,7 @@ import { ref, onMounted, computed } from "vue";
 import BaseHeader from "@/components/base/BaseHeader.vue";
 import BaseModal from "@/components/base/BaseModal.vue";
 import BaseButton from "@/components/base/BaseButton.vue";
+import TopologyTree from "@/components/custom/TopologyTree.vue";
 // import BaseCard from "@/components/base/BaseCard.vue";
 // import BaseLabel from "@/components/base/BaseLabel.vue";
 import BaseGrid from "@/components/base/BaseGrid.vue";
@@ -443,13 +473,9 @@ const columns: GridColumn<Row>[] = [
   textCol<Row>("GATEWAY", "Gateway"),
   textCol<Row>("IP_START", "IP Inizio"),
   textCol<Row>("IP_END", "IP Fine"),
-];
+  textCol<Row>("USABLE_IPS", "IP disponibili")];
 const ruleColumns: GridColumn<Row>[] = [
-  textCol<Row>("AZIONE", "Azione"),
-  textCol<Row>("PROTOCOLLO", "Protocollo"),
-  textCol<Row>("ORIGINE", "Origine"),
-  textCol<Row>("DESTINAZIONE", "Destinazione"),
-  textCol<Row>("PORTA_DESTINAZIONE", "Porta"),
+  textCol<Row>("ESTESA", "Regola"),
 ];
 
 // Dispositivi
@@ -470,28 +496,106 @@ const deviceColumns: GridColumn<DevRow>[] = [
 ];
 
 async function loadDevicesForSelectedVlan(sede?: string) {
-  const id = selectedVlan.value?.ID_VLAN;
+  const id = (selectedVlan.value as any)?.ID ?? (selectedVlan.value as any)?.ID_VLAN;
   if (!id) {
     deviceRows.value = [];
     return;
   }
-  const { data } = await apiLoadDevicesForVlan(id, sede).catch(() => ({ data: { rows: [] } }));
+  const { data } = await apiLoadDevicesForVlan(id).catch(() => ({ data: { rows: [] } }));
   const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
-  deviceRows.value = rows;
+  const base = sede ? rows.filter((r: any) => String(r.NOME_SEDE ?? '') === String(sede)) : rows;
+  deviceRows.value = uniqDevices(base);
 }
 
-function openDevicesModal(sede?: string) {
-  loadDevicesForSelectedVlan(sede).finally(() => {
-    const vlan = selectedVlan.value;
-    devicesTitle.value = `${sede ?? 'Tutte le sedi'} | VLAN ${vlan?.ID_VLAN ?? ''} ${vlan?.NOME_VLAN ?? ''} | Dispositivi (${deviceRows.value.length})`;
-    showDevices.value = true;
-  });
+
+
+// Gruppi dispositivi per sede + nome VLAN variabile
+const deviceGroupKeys = computed(() => {
+  const keys = new Set<string>();
+  for (const r of rawRows.value) {
+
+    const sede = String(r.NOME_SEDE ?? '');
+    const name = String(r.NOME_VLAN ?? selectedVlan.value?.NOME_VLAN ?? '');
+    const assoc = String(
+      (r as any).ID_VLAN_SEQ ?? (r as any).VLAN_SEDE_ID ?? (r as any).ID_VAL ?? ''
+    );
+    if (!assoc) {
+      // Debug: manca l'ID di associazione nella riga
+      console.warn('deviceGroupKeys: associazione assente per riga', { sede, name, row: r });
+      continue;
+    }
+    // Chiave: assocId|sede|nome
+    keys.add(`${assoc}|${sede}|${name}`);
+  }
+  return Array.from(keys);
+});
+function parseDeviceKey(key: string) {
+  const [assoc, sede, name] = String(key).split('|');
+  return { assoc, sede, name };
+}
+const expandedDeviceGroups = ref<Record<string, boolean>>({});
+const deviceRowsByGroup = ref<Record<string, any[]>>({});
+const loadingDevice = ref<Record<string, boolean>>({});
+async function toggleDeviceGroup(key: string) {
+  expandedDeviceGroups.value[key] = !expandedDeviceGroups.value[key];
+  // Se si apre un gruppo, chiudi tutti gli altri (accordion single-open)
+  if (expandedDeviceGroups.value[key]) {
+    for (const k of Object.keys(expandedDeviceGroups.value)) {
+      if (k !== key) expandedDeviceGroups.value[k] = false;
+    }
+  }
+  if (expandedDeviceGroups.value[key]) {
+    if (!deviceRowsByGroup.value[key] || deviceRowsByGroup.value[key].length === 0) {
+      const { assoc } = parseDeviceKey(key);
+      loadingDevice.value[key] = true;
+      try {
+        const id = (selectedVlan.value as any)?.ID ?? (selectedVlan.value as any)?.ID_VLAN;
+
+        if (id) {
+          const { data } = await apiLoadDevicesForVlan(id).catch(() => ({ data: { rows: [] } }));
+          const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
+          const assocOf = (r: any) => String(r.ID_VLAN_UNIQUE ?? r.VLAN_SEDE_ID ?? r.ID_VAL ?? '');
+
+          // Filtra SOLO per associazione; se assente, non mostrare nulla per evitare duplicazioni
+          const filtered = assoc ? rows.filter((r: any) => assocOf(r) === assoc) : [];
+          const deduped = uniqDevices(filtered);
+
+          deviceRowsByGroup.value[key] = deduped;
+        } else {
+          deviceRowsByGroup.value[key] = [];
+        }
+      } finally {
+        loadingDevice.value[key] = false;
+      }
+    }
+  }
+}
+
+// Deduplica dispositivi uguali (la 28 replica righe per regole/interfacce)
+function uniqDevices(rows: any[]) {
+  const seen = new Set<string>();
+  const keyOf = (r: any) => [
+    String(r.SERIALE ?? ''),
+    String(r.HOST_NAME ?? ''),
+    String(r.IP ?? ''),
+    String(r.PORTA ?? ''),
+    String(r.STANZA ?? ''),
+    String(r.NOME_SEDE ?? ''),
+  ].join('|');
+  const out: any[] = [];
+  for (const r of rows) {
+    const k = keyOf(r);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(r);
+  }
+  return out;
 }
 
 /* Load VLAN */
 async function loadVlans() {
   const { data } = await apiLoadVlans().catch(() => ({ data: { rows: [] } }));
-  console.log("DATAAAA", data);
+
   const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
   // Mostra una sola voce per ogni ID_VLAN (no duplicati)
   const map: Record<number, { ID_VLAN: number; NOME_VLAN: string; SEDI: Set<string> }> = {};
@@ -518,7 +622,60 @@ async function selectVlan(v: any) {
   const { data } = await apiLoadVlanPanoramica(v.ID_VLAN).catch(() => ({ data: { rows: [] } }));
   const rows = ((data as any)?.rows ?? []) as any[];
   // Inietta il nome VLAN nelle righe per mostrarlo in griglia
-  rawRows.value = rows.map((r) => ({ ...r, NOME_VLAN: r.NOME_VLAN ?? v.NOME_VLAN }));
+
+  // Helpers per normalizzare subnet e calcolare IP utilizzabili
+  function parseMaskToCidr(maskStr: null){
+    if (maskStr == null) return null;
+    const s = String(maskStr).trim();
+    if (!s) return null;
+    const asNum = Number(s);
+    if (!Number.isNaN(asNum) && asNum >= 0 && asNum <= 32) return asNum;
+    const parts = s.split(".").map((n) => Number(n));
+    if (parts.length !== 4 || parts.some((n) => Number.isNaN(n) || n < 0 || n > 255)) return null;
+    let maskInt = (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3];
+    const inv = (~maskInt) >>> 0;
+    if (((inv + 1) & inv) !== 0) return null;
+    let cidr = 0;
+    while ((maskInt & 0x80000000) >>> 0) {
+      cidr++;
+      maskInt = (maskInt << 1) >>> 0;
+    }
+    return cidr;
+  }
+  function normalizeSubnetString(subnet: any, mask: any){
+    const ip = String(subnet ?? "").trim();
+    if (!ip) return "";
+    if (ip.includes("\\")) return ip;
+    if (ip.includes("/")) return ip.replace("/", "\\");
+    const cidr = parseMaskToCidr(mask);
+    return cidr != null ? `${ip}\\${cidr}` : ip;
+  }
+  function usableIps(subnet: any, mask: any){
+    const s = String(subnet ?? "").trim();
+    let cidr = null;
+    if (s.includes("\\")) {
+      const suf = s.split("\\")[1];
+      const n = Number(suf);
+      if (!Number.isNaN(n)) cidr = n;
+    } else if (s.includes("/")) {
+      const suf = s.split("/")[1];
+      const n = Number(suf);
+      if (!Number.isNaN(n)) cidr = n;
+    }
+    if (cidr == null) cidr = parseMaskToCidr(mask);
+    if (cidr == null) return 0;
+    const hostBits = 32 - cidr;
+    if (cidr >= 31) return 0;
+    return Math.max(0, Math.pow(2, hostBits) - 2);
+  }
+  // Inietta colonne derivate per griglia
+  rawRows.value = rows.map((r) => ({
+    ...r,
+    NOME_VLAN: r.NOME_VLAN ?? v.NOME_VLAN,
+    ESTESA: r.ESTESA ?? ruleToString(r),
+    SUBNET: normalizeSubnetString(r.SUBNET, r.MASK),
+    USABLE_IPS: usableIps(r.SUBNET, r.MASK),
+  }));
   groupedRows.value = groupRowsForGrid(rawRows.value);
   // Precarica dispositivi per la tab dedicata
   loadDevicesForSelectedVlan();
@@ -532,7 +689,12 @@ function groupRowsForGrid(rows: any[]) {
     if (!grouped[key]) {
       grouped[key] = { ...r, _children: [] };
     }
-    grouped[key]._children.push(r);
+        // Aggiungi alla sottogriglia solo se ha interfaccia e regola non vuota
+    {
+      const iface = String(r.NOME_INTERFACCIA ?? r.DEVICE_NAME ?? "").trim();
+      const estesa = String((r as any).ESTESA ?? "").trim();
+      if (iface && estesa) grouped[key]._children.push(r);
+    }
   }
   return Object.values(grouped).map((g) => ({ ...g, RULE_COUNT: g._children.length }));
 }
@@ -576,6 +738,12 @@ function getMatrixValueFor(key: string, src: string, dest: string) {
 }
 function toggleHeatmap(key: string) {
   expandedHeatmaps.value[key] = !expandedHeatmaps.value[key];
+  // Chiudi gli altri gruppi quando uno viene aperto (single-open)
+  if (expandedHeatmaps.value[key]) {
+    for (const k of Object.keys(expandedHeatmaps.value)) {
+      if (k !== key) expandedHeatmaps.value[k] = false;
+    }
+  }
 }
 function getMatrixValue(src: string, dest: string) {
   const match = rawRows.value.find((r) => r.ORIGINE === src && r.DESTINAZIONE === dest);
@@ -618,12 +786,12 @@ function groupRulesByLabel(rules: any[]) {
     const proto = String(r.PROTOCOLLO || "").trim();
     const label = `${action}${proto ? " " + proto : ""}`;
     if (!map[label]) {
-      // Stile coerente con le card padre (pastello + bordo)
-      let color = " bg-green-300 text-green-800 border border-green-600 hover:bg-green-100";
+      // Card colore pieno = stesso colore di bordo + ombra
+      let color = "bg-green-600 text-white border border-green-600 shadow hover:bg-green-700";
       if (action === "DENY")
-        color = " bg-red-300 text-red-800 border border-red-600 hover:bg-red-100";
+        color = "bg-red-600 text-white border border-red-600 shadow hover:bg-red-700";
       else if (proto === "UDP")
-        color = " bg-blue-300 text-blue-800 border border-blue-600 hover:bg-blue-100";
+        color = "bg-blue-600 text-white border border-blue-600 shadow hover:bg-blue-700";
       map[label] = { label, color, items: [] };
     }
     map[label].items.push(r);
@@ -655,6 +823,11 @@ function showInterface(sede: string, vlanId: string | number, vlanName: string, 
   selectedNode.value = rows;
   detailTitle.value = `${sede} | VLAN ${vlanId} ${vlanName} | Interfaccia ${ifaceName} (${rows.length})`;
   showDetail.value = true;
+}
+
+// Handler per componente TopologyTree
+function onOpenInterface(payload: { sede: string; vlanId: string | number; vlanName: string; iface: string }) {
+  showInterface(payload.sede, payload.vlanId, payload.vlanName, payload.iface);
 }
 
 // Rende la regola in stringa semplice leggibile
@@ -732,5 +905,42 @@ const aclNumber = computed(() => rawRows.value[0]?.ACL_NUMERO ?? "-");
 //   return [...new Set(rawRows.value.map((r) => r.NOME_SEDE))].filter((v): v is string => !!v);
 // });
 
+// Stato espansione per vista ad albero (Struttura)
+const expandedSedi = ref<Record<string, boolean>>({});
+const expandedVlans = ref<Record<string, Record<string, boolean>>>({});
+function sedeKey(s: string) {
+  return String(s);
+}
+function vlanKey(v: { id: string | number; name: string }) {
+  return `${String(v.id)}|${String(v.name)}`;
+}
+function isSedeOpen(sede: string) {
+  return !!expandedSedi.value[sedeKey(sede)];
+}
+function toggleSede(sede: string) {
+  const key = sedeKey(sede);
+  const next = !expandedSedi.value[key];
+  // single-open per sedi
+  expandedSedi.value = {};
+  if (next) expandedSedi.value[key] = true;
+}
+function isVlanOpen(sede: string, vlan: { id: string | number; name: string }) {
+  const sk = sedeKey(sede);
+  const vk = vlanKey(vlan);
+  return !!(expandedVlans.value[sk] && expandedVlans.value[sk][vk]);
+}
+function toggleVlan(sede: string, vlan: { id: string | number; name: string }) {
+  const sk = sedeKey(sede);
+  const vk = vlanKey(vlan);
+  if (!expandedVlans.value[sk]) expandedVlans.value[sk] = {};
+  const next = !expandedVlans.value[sk][vk];
+  // single-open per VLAN all'interno della sede
+  expandedVlans.value[sk] = {};
+  if (next) expandedVlans.value[sk][vk] = true;
+}
+
 onMounted(() => loadVlans());
 </script>
+
+
+

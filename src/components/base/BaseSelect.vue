@@ -114,4 +114,5 @@ onBeforeUnmount(() => document.removeEventListener("click", handleClickOutside))
 const selectedOption = computed(() =>
   props.options.find((o) => o.value === props.modelValue) || null
 );
+
 </script>

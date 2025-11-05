@@ -41,7 +41,7 @@ export async function apiBatchCounts(queryId: number, paramLikes: string[]) {
 
 // Rights APIs
 export async function apiFetchRightsByMatricola(matricola: string) {
-  console.log("dfvvvvvvvv");
+
   return http.post(QUERY_BASE, {
     queryId: 1,
     params: [{ index: 1, value: matricola }],
@@ -129,7 +129,7 @@ export async function apiCreateSede(payload: {
   DATA_AGGIORNAMENTO: string; // ISO date string
 }) {
   const p = payload;
-  console.log(p)
+
   return http.post(QUERY_BASE, {
     queryId: 9,
     params: [
@@ -188,7 +188,7 @@ export async function apiUpdateVlan(id: number, payload: {
 // Associazioni VLAN-Sedi
 // Select associazioni per VLAN (queryId 16)
 export async function apiLoadVlanSedi(idVlan: number | string) {
-  console.log(idVlan)
+
   return http.post(QUERY_BASE, {
     queryId: 16,
     params: [{ index: 1, value: String(idVlan) }],
@@ -210,7 +210,7 @@ export async function apiInsertVlanSede(payload: {
   NOTE: string;
 }) {
   const p = payload;
-console.log(p)
+
   return http.post(QUERY_BASE, {
     queryId: 15,
     params: [
@@ -462,7 +462,7 @@ export async function apiCreateAcl(
 export async function apiLoadAclRules(aclId: number | string) {
   // Select rules by ACL (queryId 25)
   return http.post(QUERY_BASE, {
-    queryId: 25,
+    queryId: 29,
     params: [{ index: 1, value: String(aclId) }],
     maxRows: 2000,
   });
@@ -526,6 +526,41 @@ export async function apiCreateAclRule(
   return http.post(QUERY_BASE, { queryId: 27, params });
 }
 
+// Simple ESTESA-based endpoints (insert=30, update=31)
+// Insert ESTESA: supports single or batch [{ numeroAcl, estesa }]
+export function apiCreateAclRuleEstesa(numeroAcl: string | number, estesa: string): Promise<any>;
+export function apiCreateAclRuleEstesa(batch: Array<{ numeroAcl: string | number; estesa: string }>): Promise<any>;
+export function apiCreateAclRuleEstesa(arg1: any, arg2?: any) {
+  if (Array.isArray(arg1)) {
+    const batch = arg1.map((item) => ({
+      params: [
+        { index: 1, value: item.numeroAcl },
+        { index: 2, value: item.estesa },
+      ],
+    })) as any[];
+    return http.post(QUERY_BASE, { queryId: 30, kind: "batch", batch });
+  }
+  const params = toParams([arg1, arg2]);
+  return http.post(QUERY_BASE, { queryId: 30, params });
+}
+
+// Update ESTESA: supports single or batch [{ id, estesa }]
+export function apiUpdateAclRuleEstesa(id: string | number, estesa: string): Promise<any>;
+export function apiUpdateAclRuleEstesa(batch: Array<{ id: string | number; estesa: string }>): Promise<any>;
+export function apiUpdateAclRuleEstesa(arg1: any, arg2?: any) {
+  if (Array.isArray(arg1)) {
+    const batchUpdate = arg1.map((item) => ({
+      params: [
+        { index: 1, value: item.estesa },
+        { index: 2, value: item.id },
+      ],
+    })) as any[];
+    return http.post(QUERY_BASE, { queryId: 31, kind: "batchUpdate", batch: batchUpdate });
+  }
+  const params = toParams([arg1, arg2]);
+  return http.post(QUERY_BASE, { queryId: 31, params });
+}
+
 export async function apiDeleteAclRule(ruleId: number | string) {
   // Delete rule by id (queryId 28)
   return http.post(QUERY_BASE, {
@@ -535,12 +570,13 @@ export async function apiDeleteAclRule(ruleId: number | string) {
 }
 
 // Dispositivi per VLAN (e opzionalmente per sede)
-export async function apiLoadDevicesForVlan(idVlan: number | string, sede?: string) {
+export async function apiLoadDevicesForVlan(idVlan: number | string) {
   const params = [{ index: 1, value: String(idVlan) }] as { index: number; value: any }[];
-  if (sede && String(sede).trim().length) params.push({ index: 2, value: String(sede) });
+  // if (sede && String(sede).trim().length) params.push({ index: 2, value: String(sede) });
   // NOTE: imposta il queryId lato backend per questa select
+
   return http.post(QUERY_BASE, {
-    queryId: 29,
+    queryId: 28,
     params,
     maxRows: 5000,
   });

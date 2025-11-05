@@ -9,7 +9,7 @@ type RawRightRow = {
 
 export async function fetchRightsByMatricola(matricola: string): Promise<RightsPayload> {
   const { data } = await apiFetchRightsByMatricola(matricola);
-console.log("data",data)
+
   const generalRoles: number[] = [];
   const rights: Right[] = [];
   const rows: RawRightRow[] = Array.isArray((data as any)?.rows) ? (data as any).rows : [];

@@ -110,7 +110,7 @@ async function onSubmit() {
   loading.value = true;
   try {
     const { access_token } = await loginRequest(email.value, password.value);
-    console.log("wegwer")
+
     setToken(access_token);
     const rights = useRightsStore();
     await rights.bootstrap(email.value);
