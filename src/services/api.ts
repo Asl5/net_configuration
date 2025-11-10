@@ -5,6 +5,7 @@ import { AUTH_BASE, QUERY_BASE } from "@/config/config";
 
 // POST /auth/login
 export async function loginRequest(username: string, password: string) {
+
   const res = await fetch(`${AUTH_BASE}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -528,36 +529,41 @@ export async function apiCreateAclRule(
 
 // Simple ESTESA-based endpoints (insert=30, update=31)
 // Insert ESTESA: supports single or batch [{ numeroAcl, estesa }]
-export function apiCreateAclRuleEstesa(numeroAcl: string | number, estesa: string): Promise<any>;
-export function apiCreateAclRuleEstesa(batch: Array<{ numeroAcl: string | number; estesa: string }>): Promise<any>;
-export function apiCreateAclRuleEstesa(arg1: any, arg2?: any) {
+export function apiCreateAclRuleEstesa(numeroAcl: string | number, estesa: string, spiegazione?: string): Promise<any>;
+export function apiCreateAclRuleEstesa(batch: Array<{ numeroAcl: string | number; estesa: string; spiegazione?: string }>): Promise<any>;
+export function apiCreateAclRuleEstesa(arg1: any, arg2?: any, arg3?: any) {
   if (Array.isArray(arg1)) {
-    const batch = arg1.map((item) => ({
-      params: [
+    const batch = arg1.map((item) => {
+      const params = [
         { index: 1, value: item.numeroAcl },
         { index: 2, value: item.estesa },
-      ],
-    })) as any[];
+        { index: 3, value: item.spiegazione ?? "" },
+      ] as { index: number; value: any }[];
+      return { params };
+    }) as any[];
     return http.post(QUERY_BASE, { queryId: 30, kind: "batch", batch });
   }
-  const params = toParams([arg1, arg2]);
+  const params = toParams([arg1, arg2, arg3 ?? ""]);
   return http.post(QUERY_BASE, { queryId: 30, params });
 }
 
 // Update ESTESA: supports single or batch [{ id, estesa }]
-export function apiUpdateAclRuleEstesa(id: string | number, estesa: string): Promise<any>;
-export function apiUpdateAclRuleEstesa(batch: Array<{ id: string | number; estesa: string }>): Promise<any>;
-export function apiUpdateAclRuleEstesa(arg1: any, arg2?: any) {
+export function apiUpdateAclRuleEstesa(id: string | number, estesa: string, spiegazione?: string): Promise<any>;
+export function apiUpdateAclRuleEstesa(batch: Array<{ id: string | number; estesa: string; spiegazione?: string }>): Promise<any>;
+export function apiUpdateAclRuleEstesa(arg1: any, arg2?: any, arg3?: any) {
   if (Array.isArray(arg1)) {
-    const batchUpdate = arg1.map((item) => ({
-      params: [
+    const batchUpdate = arg1.map((item) => {
+      const params = [
         { index: 1, value: item.estesa },
-        { index: 2, value: item.id },
-      ],
-    })) as any[];
+        { index: 2, value: item.spiegazione ?? "" },
+        { index: 3, value: item.id },
+      ] as { index: number; value: any }[];
+      return { params };
+    }) as any[];
     return http.post(QUERY_BASE, { queryId: 31, kind: "batchUpdate", batch: batchUpdate });
   }
-  const params = toParams([arg1, arg2]);
+  // Ordine richiesto: [estesa, spiegazione, id]
+  const params = toParams([arg2, arg3 ?? "", arg1]);
   return http.post(QUERY_BASE, { queryId: 31, params });
 }
 

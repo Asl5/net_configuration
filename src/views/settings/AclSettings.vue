@@ -37,56 +37,89 @@
             </h2>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <!-- <BaseInput v-model.number="selectedAcl.NUMERO" label="Numero ACL" type="text" disabled /> -->
-            <BaseSelect
-              v-model="selectedAcl.DIREZIONE"
-              label="Direzione"
-              :options="[
-                { value: 'IN', label: 'IN' },
-                { value: 'OUT', label: 'OUT' },
-              ]"
-            /><BaseInput v-model="selectedAcl.DESCRIZIONE" label="Descrizione" />
-            <!-- Incolla configurazione (parse automatico, senza bottoni) -->
-            <BaseInput
-              v-model="pasteText" as="textarea"
-              label="Incolla configurazione ACL Cisco"
-              rows="8"
-              class="font-mono text-xs col-span-2 sm:col-span-2"
-              placeholder="Incolla righe tipo: access-list 135 permit tcp host 1.2.3.4 eq 80 any"
-            />
+            <div class="col-span-1 sm:col-span-1">
+              <div class="flex items-end gap-4 w-full">
+                <BaseSelect
+                  v-model="selectedAcl.DIREZIONE"
+                  label="Direzione"
+                  :options="[
+                    { value: 'IN', label: 'IN' },
+                    { value: 'OUT', label: 'OUT' },
+                  ]"
+                  wrapper-class="w-32 md:w-40"
+                />
+                <BaseInput v-model="selectedAcl.DESCRIZIONE" label="Descrizione" />
+              </div>
+              <!-- Incolla configurazione (parse automatico, senza bottoni) -->
+              <div class="col-span-2 sm:col-span-2">
+                <BaseInput
+                  v-model="pasteText"
+                  as="textarea"
+                  label="Incolla configurazione ACL Cisco"
+                  rows="8"
+                  class="font-mono text-xs"
+                  placeholder="Incolla righe tipo: access-list 135 permit tcp host 1.2.3.4 eq 80 any"
+                />
+              </div>
+            </div>
+            <!-- Regole derivate / modificabili (input singola riga, 2 per riga) -->
+            <div class="space-y-2 sm:col-span-2">
+              <h3 class="text-sm font-semibold text-gray-700">Regole</h3>
+              <div class="max-h-[70vh] overflow-y-auto pr-1">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div
+                    v-for="(r, idx) in aclRules"
+                    :key="r.ID ?? `row-${idx}`"
+                    class="bg-white border rounded p-2 grid grid-cols-[minmax(0,1fr)_auto] grid-rows-2 gap-x-2 gap-y-1"
+                  >
+                    <BaseInput
+                      v-model="r.ESTESA"
+                      placeholder="Regola estesa"
+                      class="font-mono text-xs w-full col-start-1 row-start-1"
+                      @update:modelValue="() => updateRuleEditState(r)"
+                    />
+                    <div class="col-start-2 row-span-2 self-center">
+                      <span
+                        :class="
+                          r._editing
+                            ? 'bg-orange-100 text-orange-700'
+                            : r.ID
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-gray-100 text-gray-600'
+                        "
+                        class="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap"
+                        >{{ r._editing ? "Da confermare" : r.ID ? "Già presente" : "Nuova" }}</span
+                      >
+                    </div>
+                    <BaseInput
+                      v-model="r.SPIEGAZIONE"
+                      placeholder="Spiegazione"
+                      class="text-xs w-full col-start-1 row-start-2"
+                      @update:modelValue="() => updateRuleEditState(r)"
+                    />
+                    <span
+                      :class="
+                        r._editing
+                          ? 'bg-orange-100 text-orange-700'
+                          : r.ID
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-gray-100 text-gray-600'
+                      "
+                      class="hidden text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap"
+                      >{{ r._editing ? "Da confermare" : r.ID ? "Già presente" : "Nuova" }}</span
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="flex justify-end mt-2">
             <BaseButton size="xs" variant="primary" @click="importFromPaste">
               Genera dalle righe incollate
             </BaseButton>
-          </div>
-
-          <!-- Regole derivate / modificabili (input singola riga, 2 per riga) -->
-          <div class="space-y-2">
-            <h3 class="text-sm font-semibold text-gray-700">Regole</h3>
-              <div class="max-h-[70vh] overflow-y-auto pr-1">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                <div
-                  v-for="(r, idx) in aclRules"
-                  :key="r.ID ?? `row-${idx}`"
-                  class="bg-white border rounded p-2 flex items-center gap-2"
-                >
-                  <BaseInput
-                    v-model="r.ESTESA"
-                    placeholder="Regola estesa"
-                    class="w-full font-mono text-xs"
-                    @update:modelValue="() => updateRuleEditState(r)"
-                  />
-                  <span
-                    :class="r._editing ? 'bg-orange-100 text-orange-700' : (r.ID ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600')"
-                    class="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap"
-                    >{{ r._editing ? 'Da confermare' : (r.ID ? 'Già presente' : 'Nuova') }}</span
-                  >
-                </div>
-              </div>
-            </div>
           </div>
 
           <div class="flex mt-4 justify-end">
@@ -99,8 +132,8 @@
     </div>
 
     <!-- Modale nuova ACL -->
-    <BaseModal v-model="showAdd" title="Nuova ACL" height="60vh" max-width="60vw">
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <BaseModal v-model="showAdd" title="Nuova ACL" height="60vh" max-width="50vw">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <BaseInput v-model.number="newAcl.NUMERO" label="ACL" type="text" />
         <BaseSelect
           v-model="newAcl.DIREZIONE"
@@ -110,11 +143,9 @@
             { value: 'OUT', label: 'OUT' },
           ]"
         />
-        <BaseInput
-          v-model="newAcl.DESCRIZIONE"
-          label="Descrizione"
-          class="md:col-span-2 col-span-2"
-        />
+        <div class="md:col-span-2 col-span-2">
+          <BaseInput v-model="newAcl.DESCRIZIONE" label="Descrizione" class="" />
+        </div>
       </div>
 
       <!-- Rimosso campo TESTO_CONFIG nella creazione -->
@@ -282,7 +313,6 @@ onMounted(() => reload());
 
 /* ===== Regole ACL ===== */
 async function reloadRules() {
-
   if (!selectedAcl.value?.ID) return;
   const { data } = await apiLoadAclRules(selectedAcl.value.ID);
 
@@ -296,6 +326,7 @@ async function reloadRules() {
     DESTINAZIONE: r.DESTINAZIONE,
     PORTA_DESTINAZIONE: r.PORTA_DESTINAZIONE ?? "",
     PORTA_ORIGINE: r.PORTA_ORIGINE ?? "",
+    SPIEGAZIONE: (r as any).SPIEGAZIONE ?? (r as any).spiegazione ?? "",
     ESTESA: (
       ((r as any).ESTESA ?? buildExtendedFromParts(selectedAcl.value.NUMERO ?? r.ACL_ID, r)) + ""
     )
@@ -306,7 +337,6 @@ async function reloadRules() {
 
   // Mostriamo solo ESTESA ma manteniamo i campi per salvataggio
   aclRules.value = originalAclRules.value.map((r: any) => ({ ...r }));
-
 }
 
 // Converte i campi atomici in stringa estesa tipo "access-list <num> permit tcp host 1.2.3.4 any eq 80"
@@ -324,17 +354,21 @@ function buildExtendedFromParts(aclNumber: string | number, r: any) {
   return parts.filter(Boolean).join(" ").trim();
 }
 
-
-function normalizeEstesa(s: string) { return (s || "").trim().replace(/\s+/g, " "); }
+function normalizeEstesa(s: string) {
+  return (s || "").trim().replace(/\s+/g, " ");
+}
 function updateRuleEditState(rule: any) {
   try {
     const current = normalizeEstesa(rule?.ESTESA || "");
+    const currentSpieg = String(rule?.SPIEGAZIONE || "").trim();
     let original = "";
+    let originalSpieg = "";
     if (rule?.ID != null) {
       const o = (originalAclRules.value || []).find((x: any) => String(x.ID) === String(rule.ID));
       original = normalizeEstesa(o?.ESTESA || "");
+      originalSpieg = String(o?.SPIEGAZIONE || "").trim();
     }
-    rule._editing = current !== original;
+    rule._editing = current !== original || currentSpieg !== originalSpieg;
   } catch {}
 }
 
@@ -391,18 +425,21 @@ async function saveAclRulesInternal() {
   // Inserisce/aggiorna solo tramite ESTESA usando batch
   if (!selectedAcl.value?.NUMERO) return;
   const numeroAcl = selectedAcl.value.ID;
-  const toInsert: { numeroAcl: string | number; estesa: string }[] = [];
-  const toUpdate: { id: string | number; estesa: string }[] = [];
+  const toInsert: { numeroAcl: string | number; estesa: string; spiegazione?: string }[] = [];
+  const toUpdate: { id: string | number; estesa: string; spiegazione?: string }[] = [];
 
   for (const r of aclRules.value) {
-    const est = String(r.ESTESA || "").trim().replace(/\s+/g, " ");
+    const est = String(r.ESTESA || "")
+      .trim()
+      .replace(/\s+/g, " ");
     if (!est.length) continue;
-    if (r.ID) { if (r._editing) toUpdate.push({  estesa: est,id: r.ID, }); }
-    else toInsert.push({ numeroAcl, estesa: est });
+    if (r.ID) {
+      if (r._editing) toUpdate.push({ estesa: est, id: r.ID, spiegazione: r.SPIEGAZIONE || "" });
+    } else toInsert.push({ numeroAcl, estesa: est, spiegazione: r.SPIEGAZIONE || "" });
   }
-console.log(toUpdate)
-  if (toUpdate.length) await apiUpdateAclRuleEstesa(toUpdate);
-  if (toInsert.length) await apiCreateAclRuleEstesa(toInsert);
+  console.log(toUpdate);
+  if (toUpdate.length) await apiUpdateAclRuleEstesa(toUpdate as any);
+  if (toInsert.length) await apiCreateAclRuleEstesa(toInsert as any);
 
   await reloadRules();
 }
@@ -433,7 +470,7 @@ function importFromPaste() {
     const normalized = line.trim().replace(/\s+/g, " ");
     const key = normKey(normalized);
     if (existing.has(key)) continue;
-    aclRules.value.push({ ID: null, ACL_ID: aclNum, ESTESA: normalized });
+    aclRules.value.push({ ID: null, ACL_ID: aclNum, ESTESA: normalized, SPIEGAZIONE: "" });
     existing.add(key);
   }
 }
@@ -455,4 +492,3 @@ function importFromPaste() {
 
 // salvataggio puntuale rimosso; gestione centralizzata nel Salva finale
 </script>
-

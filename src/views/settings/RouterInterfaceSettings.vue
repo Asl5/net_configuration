@@ -68,12 +68,12 @@
 
             <div class="grid grid-cols-2 gap-4 mt-4">
 
-              <BaseTextArea v-model="selectedRouter.DESCRIZIONE" label="Descrizione" rows="3"    class="text-xs"/>
+              <BaseTextArea v-model="selectedRouter.DESCRIZIONE" label="Descrizione" rows="3"    class="text-xs h-36"/>
                <BaseTextArea
                 v-model="selectedRouter.CONFIG_TESTO"
                 label="Configurazione completa"
                 rows="3"
-                class="text-xs"
+                class="text-xs h-36"
               />
             </div>
 
@@ -92,8 +92,8 @@
     </div>
 
     <!-- Modale nuova interfaccia -->
-    <BaseModal v-model="showAddInterface" title="Nuova Interfaccia Router" height="65vh">
-      <div class="grid grid-cols-2 sm:grid-cols-6 gap-4">
+    <BaseModal v-model="showAddInterface" title="Nuova Interfaccia Router" height="65vh" max-width="50vw">
+      <div class="grid grid-cols-2 sm:grid-cols-2 gap-4">
         <BaseSelect
           v-model="newRouter.ASSOC_ID"
           :options="assocOptions"

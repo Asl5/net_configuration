@@ -40,20 +40,16 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, watch, computed } from 'vue';
+import { onMounted, onBeforeUnmount, watch, computed, ref } from 'vue'
 
-/**
- * BaseModal — modale centrata, con blocco scroll e larghezza/altezza configurabili.
- * Ora include anche la prop `maxWidth`.
- */
 const props = withDefaults(
   defineProps<{
-    modelValue: boolean;
-    title?: string;
-    lockScroll?: boolean;
-    maxHeight?: string;
-    maxWidth?: string; // ✅ nuova prop per controllare la larghezza
-    scrollable?: boolean;
+    modelValue: boolean
+    title?: string
+    lockScroll?: boolean
+    maxHeight?: string
+    maxWidth?: string
+    scrollable?: boolean
   }>(),
   {
     lockScroll: true,
@@ -61,71 +57,70 @@ const props = withDefaults(
     maxWidth: undefined as any,
     scrollable: true,
   }
-);
+)
 
-const emit = defineEmits<{ (e: 'update:modelValue', value: boolean): void }>();
+const emit = defineEmits<{ (e: 'update:modelValue', value: boolean): void }>()
 
 function close() {
-  emit('update:modelValue', false);
+  emit('update:modelValue', false)
 }
 
 /* ===== Blocca scroll body ===== */
-function lockBody() {
-  document.body.style.overflow = 'hidden';
-}
-function unlockBody() {
-  document.body.style.overflow = '';
-}
+const lockBody = () => (document.body.style.overflow = 'hidden')
+const unlockBody = () => (document.body.style.overflow = '')
 
 onMounted(() => {
-  if (props.modelValue && props.lockScroll) lockBody();
-});
-onBeforeUnmount(() => unlockBody());
+  if (props.modelValue && props.lockScroll) lockBody()
+})
+onBeforeUnmount(unlockBody)
 
 watch(
   () => props.modelValue,
   (v) => {
-    if (!props.lockScroll) return;
-    if (v) {
-      lockBody();
-    } else {
-      unlockBody();
-    }
+    if (!props.lockScroll) return
+    if (v) lockBody()
+    else unlockBody()
   }
-);
+)
 
 watch(
   () => props.lockScroll,
   (v) => {
-    if (!props.modelValue) return;
-    if (v) {
-      lockBody();
-    } else {
-      unlockBody();
-    }
+    if (!props.modelValue) return
+    if (v) lockBody()
+    else unlockBody()
   }
-);
+)
+
+/* ===== Rileva dimensioni schermo ===== */
+const windowSize = ref({ width: window.innerWidth, height: window.innerHeight })
+function handleResize() {
+  windowSize.value = { width: window.innerWidth, height: window.innerHeight }
+}
+onMounted(() => window.addEventListener('resize', handleResize))
+onBeforeUnmount(() => window.removeEventListener('resize', handleResize))
 
 /* ===== Calcolo dimensioni dinamiche ===== */
 const computedStyle = computed(() => {
-  const style: Record<string, string> = {
-    maxHeight: '95vh',
-    maxWidth: '95vw', // ✅ di default non supera lo schermo
-  };
+  const w = windowSize.value.width
+  const isSmall = w < 768 // breakpoint per tablet/schermi piccoli
 
-  // Rispetta maxHeight personalizzata
-  if (props.maxHeight) {
-    style.height = `min(${props.maxHeight}, 95vh)`;
+  const style: Record<string, string> = {}
+
+  if (isSmall) {
+    // Forza valori su schermi piccoli
+    style.maxWidth = '90vw'
+    style.maxHeight = '60vh'
+  } else {
+    // Usa le props o i default “grandi”
+    style.maxWidth = props.maxWidth ? `min(${props.maxWidth}, 95vw)` : '95vw'
+    style.maxHeight = props.maxHeight ? `min(${props.maxHeight}, 95vh)` : '95vh'
   }
 
-  // Applica maxWidth personalizzata se definita
-  if (props.maxWidth) {
-    style.maxWidth = `min(${props.maxWidth}, 95vw)`;
-  }
-
-  return style;
-});
+  return style
+})
 </script>
+
 
 <style scoped>
 .fade-enter-active,

@@ -374,7 +374,7 @@
       <div v-if="Array.isArray(selectedNode) && selectedNode.length" class="space-y-2">
         <div v-for="(it, idx) in selectedNode" :key="it.RULE_ID ?? idx" class="text-sm">
           <span class="inline-flex items-center rounded border bg-white px-2 py-1 text-gray-700">
-            {{ ruleToString(it) }}
+            {{ it.ESTESA || ruleToString(it) }}
           </span>
         </div>
       </div>
@@ -941,6 +941,5 @@ function toggleVlan(sede: string, vlan: { id: string | number; name: string }) {
 
 onMounted(() => loadVlans());
 </script>
-
 
 

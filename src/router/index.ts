@@ -7,6 +7,7 @@ import { AUTH_BASE } from "@/config/config";
 import { useRightsStore } from "@/stores/rights";
 
 const router = createRouter({
+  // History mode; assicurati di avere rewrite Apache configurati
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: "/", redirect: { name: "login" } },
@@ -43,45 +44,7 @@ const router = createRouter({
             icon: "dashboard",
           },
         },
-        {
-          path: "/dashboard-flows",
-          name: "dashboard-flows",
-          component: () => import("@/views/DashboardFlows.vue"),
-          meta: {
-            public: true,
-            title: "Dashboard Flussi",
-            nav: true,
-            parent: "dashboard",
-            order: 2,
-            icon: "trends",
-          },
-        },
-        {
-          path: "/dashboard-error",
-          name: "dashboard-error",
-          component: () => import("@/views/DashboardError.vue"),
-          meta: {
-            public: true,
-            title: "Dashboard Errori",
-            nav: true,
-            parent: "dashboard",
-            order: 3,
-            icon: "error",
-          },
-        },
-        {
-          path: "/dashboard-request",
-          name: "dashboard-request",
-          component: () => import("@/views/DashboardRequests.vue"),
-          meta: {
-            public: true,
-            title: "Dashboard Richieste",
-            nav: true,
-            parent: "dashboard",
-            order: 4,
-            icon: "grid",
-          },
-        },
+
       ],
     },
     {
