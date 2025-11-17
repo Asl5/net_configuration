@@ -104,6 +104,20 @@ const router = createRouter({
           },
         },
         {
+          path: "/vlan-devices",
+          name: "settings.vlan-devices",
+          component: () => import("../views/settings/VlanDeviceView.vue"),
+          meta: {
+            public: true,
+            title: "VLAN Device View",
+            nav: true,
+            order: 4,
+            parent: "settings",
+            requiredRole: [1, 3],
+            icon: "devices",
+          },
+        },
+        {
           path: "/acl",
           name: "settings.acl",
           component: () => import("../views/settings/AclSettings.vue"),

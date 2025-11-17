@@ -456,7 +456,6 @@ const tabs = [
   { id: "grid", label: "Tabellare" },
   { id: "structure", label: "Struttura" },
   { id: "devices", label: "Dispositivi" },
-  { id: "heatmap", label: "Heatmap ACL" },
 ];
 const activeTab = ref("grid");
 
@@ -475,7 +474,8 @@ const columns: GridColumn<Row>[] = [
   textCol<Row>("IP_END", "IP Fine"),
   textCol<Row>("USABLE_IPS", "IP disponibili")];
 const ruleColumns: GridColumn<Row>[] = [
-  textCol<Row>("ESTESA", "Regola"),
+  textCol<Row>("ESTESA", "Regola", { width: "w-2/5", cellClass: "whitespace-pre-wrap text-gray-800 px-2 py-1" }),
+  textCol<Row>("SPIEGAZIONE", "Spiegazione", { width: "w-3/5", cellClass: "whitespace-pre-wrap text-gray-800 px-2 py-1" }),
 ];
 
 // Dispositivi
@@ -673,6 +673,7 @@ async function selectVlan(v: any) {
     ...r,
     NOME_VLAN: r.NOME_VLAN ?? v.NOME_VLAN,
     ESTESA: r.ESTESA ?? ruleToString(r),
+    SPIEGAZIONE: (r as any).SPIEGAZIONE ?? (r as any).spiegazione ?? "",
     SUBNET: normalizeSubnetString(r.SUBNET, r.MASK),
     USABLE_IPS: usableIps(r.SUBNET, r.MASK),
   }));
@@ -941,5 +942,3 @@ function toggleVlan(sede: string, vlan: { id: string | number; name: string }) {
 
 onMounted(() => loadVlans());
 </script>
-
-

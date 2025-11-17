@@ -197,7 +197,12 @@
                             <th
                               v-for="ec in expandColumnsResolved"
                               :key="'eh-' + ec.key"
-                              class="text-left px-3 py-2 font-semibold text-gray-700 uppercase tracking-wide text-xs"
+                              :class="[
+                                'px-3 py-2 font-semibold text-gray-700 uppercase tracking-wide text-xs',
+                                alignClass(ec.align),
+                                ec.width,
+                                ec.headerClass,
+                              ]"
                             >
                               {{ ec.label }}
                             </th>
@@ -213,7 +218,11 @@
                             <td
                               v-for="ec in expandColumnsResolved"
                               :key="'ec-' + ec.key + '-' + ri"
-                              class="px-3 py-2 text-gray-800 align-top"
+                              :class="[
+                                'px-3 py-2 align-top',
+                                alignClass(ec.align),
+                                ec.cellClass,
+                              ]"
                             >
                               <span v-if="ec.formatter" v-html="ec.formatter(r[ec.key], r)" />
                               <span v-else>{{ r[ec.key] }}</span>
@@ -444,5 +453,4 @@ const expandColumnsResolved = computed<GridColumn<RowLike>[]>(() => {
   ];
 });
 </script>
-
 

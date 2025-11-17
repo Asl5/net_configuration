@@ -469,63 +469,63 @@ export async function apiLoadAclRules(aclId: number | string) {
   });
 }
 
-export async function apiUpdateAclRule(
-  payloadOrParams:
-    | QParam[]
-    | {
-        ID: number | string;
-        ACL_ID: number | string;
-        AZIONE: string;
-        PROTOCOLLO: string;
-        ORIGINE: string;
-        DESTINAZIONE: string;
-        PORTA_DESTINAZIONE: string;
-      }
-) {
-  // Update single ACL rule (queryId 26)
-  if (Array.isArray(payloadOrParams)) {
-    return http.post(QUERY_BASE, { queryId: 26, params: payloadOrParams });
-  }
-  const r = payloadOrParams;
-  const params = toParams([
-    r.ACL_ID,
-    r.AZIONE,
-    r.PROTOCOLLO,
-    r.ORIGINE,
-    r.DESTINAZIONE,
-    r.PORTA_DESTINAZIONE,
-    r.ID,
-  ]);
-  return http.post(QUERY_BASE, { queryId: 26, params });
-}
+// export async function apiUpdateAclRule(
+//   payloadOrParams:
+//     | QParam[]
+//     | {
+//         ID: number | string;
+//         ACL_ID: number | string;
+//         AZIONE: string;
+//         PROTOCOLLO: string;
+//         ORIGINE: string;
+//         DESTINAZIONE: string;
+//         PORTA_DESTINAZIONE: string;
+//       }
+// ) {
+//   // Update single ACL rule (queryId 26)
+//   if (Array.isArray(payloadOrParams)) {
+//     return http.post(QUERY_BASE, { queryId: 26, params: payloadOrParams });
+//   }
+//   const r = payloadOrParams;
+//   const params = toParams([
+//     r.ACL_ID,
+//     r.AZIONE,
+//     r.PROTOCOLLO,
+//     r.ORIGINE,
+//     r.DESTINAZIONE,
+//     r.PORTA_DESTINAZIONE,
+//     r.ID,
+//   ]);
+//   return http.post(QUERY_BASE, { queryId: 26, params });
+// }
 
-export async function apiCreateAclRule(
-  payloadOrParams:
-    | QParam[]
-    | {
-        ACL_ID: number | string;
-        AZIONE: string;
-        PROTOCOLLO: string;
-        ORIGINE: string;
-        DESTINAZIONE: string;
-        PORTA_DESTINAZIONE: string;
-      }
-) {
-  // Insert single ACL rule (queryId 27)
-  if (Array.isArray(payloadOrParams)) {
-    return http.post(QUERY_BASE, { queryId: 27, params: payloadOrParams });
-  }
-  const r = payloadOrParams;
-  const params = toParams([
-    r.ACL_ID,
-    r.AZIONE,
-    r.PROTOCOLLO,
-    r.ORIGINE,
-    r.DESTINAZIONE,
-    r.PORTA_DESTINAZIONE,
-  ]);
-  return http.post(QUERY_BASE, { queryId: 27, params });
-}
+// export async function apiCreateAclRule(
+//   payloadOrParams:
+//     | QParam[]
+//     | {
+//         ACL_ID: number | string;
+//         AZIONE: string;
+//         PROTOCOLLO: string;
+//         ORIGINE: string;
+//         DESTINAZIONE: string;
+//         PORTA_DESTINAZIONE: string;
+//       }
+// ) {
+//   // Insert single ACL rule (queryId 27)
+//   if (Array.isArray(payloadOrParams)) {
+//     return http.post(QUERY_BASE, { queryId: 27, params: payloadOrParams });
+//   }
+//   const r = payloadOrParams;
+//   const params = toParams([
+//     r.ACL_ID,
+//     r.AZIONE,
+//     r.PROTOCOLLO,
+//     r.ORIGINE,
+//     r.DESTINAZIONE,
+//     r.PORTA_DESTINAZIONE,
+//   ]);
+//   return http.post(QUERY_BASE, { queryId: 27, params });
+// }
 
 // Simple ESTESA-based endpoints (insert=30, update=31)
 // Insert ESTESA: supports single or batch [{ numeroAcl, estesa }]
@@ -567,13 +567,13 @@ export function apiUpdateAclRuleEstesa(arg1: any, arg2?: any, arg3?: any) {
   return http.post(QUERY_BASE, { queryId: 31, params });
 }
 
-export async function apiDeleteAclRule(ruleId: number | string) {
-  // Delete rule by id (queryId 28)
-  return http.post(QUERY_BASE, {
-    queryId: 28,
-    params: [{ index: 1, value: String(ruleId) }],
-  });
-}
+// export async function apiDeleteAclRule(ruleId: number | string) {
+//   // Delete rule by id (queryId 28)
+//   return http.post(QUERY_BASE, {
+//     queryId: 28,
+//     params: [{ index: 1, value: String(ruleId) }],
+//   });
+// }
 
 // Dispositivi per VLAN (e opzionalmente per sede)
 export async function apiLoadDevicesForVlan(idVlan: number | string) {
@@ -585,5 +585,93 @@ export async function apiLoadDevicesForVlan(idVlan: number | string) {
     queryId: 28,
     params,
     maxRows: 5000,
+  });
+}
+
+/* ================== ACL Devices (queryId 32+) ================== */
+
+export type VlanDevice = {
+  ID: string | number;
+  ID_VLAN: string | number;
+  STANZA: string;
+  DESCRIZIONE: string;
+  SERIALE: string;
+  HOST_NAME: string;
+  PORTA: string;
+  IP: string;
+  FORNITORE: string;
+  NOTE: string;
+  STATO: string;
+};
+
+// Select devices for a VLAN (queryId 32)
+export async function apiLoadVlanDevices(id: number | string) {
+  return http.post(QUERY_BASE, {
+    queryId: 32,
+    params: [{ index: 1, value: String(id) }],
+    maxRows: 5000,
+  });
+}
+
+// Insert ACL device (queryId 33)
+export async function apiInsertVlanDevice(d: VlanDevice) {
+  const p = d;
+  return http.post(QUERY_BASE, {
+    queryId: 33,
+    params: [
+      { index: 1, value: String(p.ID) },
+      { index: 2, value: p.STANZA ?? "" },
+      { index: 3, value: p.DESCRIZIONE ?? "" },
+      { index: 4, value: p.SERIALE ?? "" },
+      { index: 5, value: p.HOST_NAME ?? "" },
+      { index: 6, value: p.PORTA ?? "" },
+      { index: 7, value: p.IP ?? "" },
+      { index: 8, value: p.FORNITORE ?? "" },
+      { index: 9, value: p.NOTE ?? "" },
+      { index: 10, value: p.STATO ?? "" },
+    ],
+  });
+}
+
+// Update ACL device (queryId 34)
+// Identified by composite key (ID_VLAN + SERIALE + HOST_NAME + PORTA + IP)
+export async function apiUpdateVlanDevice( d: VlanDevice) {
+  const p = d;
+  return http.post(QUERY_BASE, {
+    queryId: 34,
+    params: [
+      // new values
+      { index: 1, value: p.STANZA ?? "" },
+      { index: 2, value: p.DESCRIZIONE ?? "" },
+      { index: 3, value: p.SERIALE ?? "" },
+      { index: 4, value: p.HOST_NAME ?? "" },
+      { index: 5, value: p.PORTA ?? "" },
+      { index: 6, value: p.IP ?? "" },
+      { index: 7, value: p.FORNITORE ?? "" },
+      { index: 8, value: p.NOTE ?? "" },
+      { index: 9, value: p.STATO ?? "" },
+      // where keys
+      { index: 10, value: String(p.ID) },
+    ],
+  });
+}
+
+// Delete ACL device (queryId 35)
+export async function apiDeleteVlanDevice(key: {
+  ID_VLAN: string | number;
+  SERIALE: string;
+  HOST_NAME: string;
+  PORTA: string;
+  IP: string;
+}) {
+  return http.post(QUERY_BASE, {
+    queryId: 35,
+    params: [
+      { index: 1, value: String(key.ID_VLAN) },
+      { index: 2, value: key.SERIALE ?? "" },
+      { index: 3, value: key.HOST_NAME ?? "" },
+      { index: 4, value: key.PORTA ?? "" },
+      { index: 5, value: key.IP ?? "" },
+    ],
   });
 }

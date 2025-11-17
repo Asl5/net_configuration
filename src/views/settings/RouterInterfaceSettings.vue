@@ -196,7 +196,7 @@
     </BaseModal>
 
     <!-- Modale ACL Rules -->
-    <BaseModal
+    <!-- <BaseModal
       v-model="showAclRules"
       title="Regole ACL"
       height="80vh"
@@ -245,8 +245,8 @@
         <BaseButton variant="secondary" @click="showAclRules = false">Chiudi</BaseButton>
         <BaseButton variant="primary" @click="saveAclRules">Salva</BaseButton>
       </div>
-    </BaseModal>
-  </div>
+     </BaseModal> -->
+   </div>
 
   <BaseModalAlert
     :show="alert.show"
@@ -277,9 +277,9 @@ import {
   apiUpdateAcl,
   apiCreateAcl,
   apiLoadAclRules,
-  apiUpdateAclRule,
-  apiCreateAclRule,
-  apiDeleteAclRule,
+  // apiUpdateAclRule,
+  // apiCreateAclRule,
+  // apiDeleteAclRule,
   apiLoadRouterInterfaceAssociations,
 } from "@/services/api";
 
@@ -449,36 +449,36 @@ async function openAclRulesModal() {
   showAclRules.value = true;
 }
 
-function addAclRule() {
-  aclRules.value.push({
-    AZIONE: "PERMIT",
-    PROTOCOLLO: "",
-    ORIGINE: "",
-    DESTINAZIONE: "",
-    PORTA_DESTINAZIONE: "",
-    isNew: true,
-  });
-}
+// function addAclRule() {
+//   aclRules.value.push({
+//     AZIONE: "PERMIT",
+//     PROTOCOLLO: "",
+//     ORIGINE: "",
+//     DESTINAZIONE: "",
+//     PORTA_DESTINAZIONE: "",
+//     isNew: true,
+//   });
+// }
 
-function removeAclRule(idx: number) {
-  const r = aclRules.value[idx];
-  if (!r) return;
-  if (r.isNew) aclRules.value.splice(idx, 1);
-  else apiDeleteAclRule(r.ID).then(() => aclRules.value.splice(idx, 1));
-}
+// function removeAclRule(idx: number) {
+//   const r = aclRules.value[idx];
+//   if (!r) return;
+//   if (r.isNew) aclRules.value.splice(idx, 1);
+//   else apiDeleteAclRule(r.ID).then(() => aclRules.value.splice(idx, 1));
+// }
 
-async function saveAclRules() {
-  try {
-    for (const r of aclRules.value) {
-      if (r.isNew) await apiCreateAclRule({ ...r, ACL_ID: selectedAcl.ID });
-      else await apiUpdateAclRule(r);
-    }
-    showAclRules.value = false;
-    showSuccess("Regole ACL salvate correttamente.");
-  } catch (e: any) {
-    showError(e?.message || "Salvataggio regole ACL fallito.");
-  }
-}
+// async function saveAclRules() {
+//   try {
+//     for (const r of aclRules.value) {
+//       if (r.isNew) await apiCreateAclRule({ ...r, ACL_ID: selectedAcl.ID });
+//       else await apiUpdateAclRule(r);
+//     }
+//     showAclRules.value = false;
+//     showSuccess("Regole ACL salvate correttamente.");
+//   } catch (e: any) {
+//     showError(e?.message || "Salvataggio regole ACL fallito.");
+//   }
+// }
 
 /* ===== Watch ===== */
 watch(
