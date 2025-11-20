@@ -1,12 +1,12 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <!-- src/components/form/BaseInput.vue -->
 <template>
-  <div :class="[ rootClass, marginClass]">
-    <!-- Label -->
+  <div :class="[rootClass, marginClass]">
+    <!-- Top Label (hidden when using floating label on input) -->
     <label
-      v-if="showLabel"
+      v-if="showLabel && !(floating && (resolvedTag === 'input' || resolvedTag === 'textarea'))"
       :for="cid"
-      class="block text-sm font-medium "
+      class="block text-sm font-medium"
       :class="computedLabelColor"
     >
       <slot name="label">{{ label }}</slot>
@@ -29,7 +29,7 @@
         :value="innerValue"
         :class="computedInputClass"
         @input="onInput"
-        @focus="(e: FocusEvent) => emit('focus', e)"
+        @focus="onFocus"
         @keydown="onKeydown"
         @keyup="(e: KeyboardEvent) => emit('keyup', e)"
         @change="onChange"
@@ -41,7 +41,23 @@
         </template>
       </component>
 
-          <!-- Trailing (icona/addon) -->
+      <!-- Floating label (Material style) -->
+      <label
+        v-if="floating && (resolvedTag == 'input' || resolvedTag == 'textarea') && (label || $slots.label)"
+        :for="cid"
+        class="absolute pointer-events-none z-10 transition-all duration-150 text-sm"
+        :class="[
+          floatLeftClass,
+          floatPosClass,
+          floatLabelColor,
+          floatLabelBgClass,
+          isFloatingActive ? 'font-bold' : 'font-normal',
+        ]"
+      >
+        <slot name="label">{{ label }}</slot>
+      </label>
+
+      <!-- Trailing (icona/addon) -->
       <div
         v-if="$slots.trailing || loading || (type === 'password' && showPasswordToggle)"
         class="absolute inset-y-0 right-0 pr-3 flex items-center gap-2"
@@ -57,7 +73,7 @@
         >
           <!-- usa qualunque icona: FontAwesome o un SVG inline -->
           <slot name="password-eye">
-          <font-awesome-icon :icon="reveal ? 'eye-slash' : 'eye'" />.
+            <font-awesome-icon :icon="reveal ? 'eye-slash' : 'eye'" />.
           </slot>
         </button>
 
@@ -65,8 +81,21 @@
         <slot name="trailing" />
 
         <!-- Spinner -->
-        <svg v-if="loading" class="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-opacity="0.25" stroke-width="4" />
+        <svg
+          v-if="loading"
+          class="h-5 w-5 animate-spin"
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+        >
+          <circle
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-opacity="0.25"
+            stroke-width="4"
+          />
           <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" stroke-width="4" />
         </svg>
       </div>
@@ -83,12 +112,10 @@
 </template>
 
 <script setup lang="ts">
-
 import { computed, ref, useAttrs, useSlots } from "vue";
-const slots = useSlots()
+const slots = useSlots();
 
-
- const reveal = ref(false)       // NEW: stato mostra/nascondi
+const reveal = ref(false); // NEW: stato mostra/nascondi
 const selfInvalid = ref(false); // NEW
 
 type Size = "sm" | "md" | "lg";
@@ -123,7 +150,7 @@ const props = withDefaults(
     invalid?: boolean;
     valid?: boolean;
     loading?: boolean;
-showPasswordToggle?: boolean;
+    showPasswordToggle?: boolean;
     /* ---- Color & style tokens (tailwind class names) ---- */
     rootClass?: string;
     marginClass?: string;
@@ -177,6 +204,7 @@ showPasswordToggle?: boolean;
     allowedChars?: RegExp | string; // NEW: filtra caratteri ammessi in digitazione
     patternMessage?: string; // NEW: messaggio per pattern custom
     help?: string;
+    floating?: boolean; // abilita floating label stile Material
   }>(),
   {
     modelValue: null,
@@ -186,7 +214,8 @@ showPasswordToggle?: boolean;
     size: "md",
     loading: false,
     help: "",
- showPasswordToggle: false,
+    floating: true,
+    showPasswordToggle: false,
     /* default neutrali (grigi) */
     textColor: "text-gray-900",
     placeholderColor: "placeholder-gray-400",
@@ -203,7 +232,7 @@ showPasswordToggle?: boolean;
     disabledBgColor: "bg-gray-100",
     disabledBorderColor: "border-gray-300",
     disabledCursor: "cursor-not-allowed",
-   rootClass: "flex-1 min-w-0",
+    rootClass: "flex-1 min-w-0",
     marginClass: "",
     borderColorInvalid: "border-red-500",
     borderColorValid: "border-green-500",
@@ -251,6 +280,29 @@ const cid = computed(() => props.id ?? `in_${Math.random().toString(36).slice(2,
 const resolvedTag = computed(() => props.as);
 const innerValue = computed(() => props.modelValue ?? "");
 
+// Floating label helpers
+const isFocused = ref(false);
+const hasValue = computed(() => {
+  const v = innerValue.value;
+  return v !== null && v !== undefined && String(v).length > 0;
+});
+const isFloatingActive = computed(() => isFocused.value || hasValue.value);
+const floatLeftClass = computed(() => (props.hasLeading ? "left-10" : "left-3"));
+const floatLabelColor = computed(() => (isFocused.value ? "text-gray-700" : "text-gray-500"));
+const floatLabelBgClass = computed(() => (props.disabled ? props.disabledBgColor : props.bgColor));
+const floatPosClass = computed(() => {
+  if (resolvedTag.value === "textarea") {
+    // Textarea: label sempre in alto; quando attiva sale leggermente e si rimpicciolisce
+    return isFloatingActive.value
+      ? "top-0 -translate-y-1/2 text-xs px-1"
+      : "top-2 -translate-y-0 text-sm px-1";
+  }
+  // Input: da centro a alto
+  return isFloatingActive.value
+    ? "top-0 -translate-y-1/2 text-xs px-1"
+    : "top-1/2 -translate-y-1/2";
+});
+
 const baseRing = computed(() =>
   isInvalid.value
     ? props.focusClassInvalid
@@ -259,14 +311,13 @@ const baseRing = computed(() =>
     : props.focusClass
 ); // MOD
 
-
 // Tipo effettivo dell'input (gestisce reveal per password)
 const currentType = computed(() => {
- if (props.type === 'password' && props.showPasswordToggle) {
-   return reveal.value ? 'text' : 'password'
-     }
- return props.type
-})
+  if (props.type === "password" && props.showPasswordToggle) {
+    return reveal.value ? "text" : "password";
+  }
+  return props.type;
+});
 
 const computedBorderColor = computed(() =>
   isInvalid.value
@@ -276,15 +327,15 @@ const computedBorderColor = computed(() =>
     : props.borderColor
 ); // MOD
 
-
-
 const hasTrailingEffective = computed(() => {
   // se l'utente ha messo slot trailing, oppure loading, oppure il toggle password
-  return !!slots.trailing || props.loading || (props.type === 'password' && props.showPasswordToggle)
-})
+  return (
+    !!slots.trailing || props.loading || (props.type === "password" && props.showPasswordToggle)
+  );
+});
 
 const sizeClass = computed(() => {
- const leftPad = props.hasLeading ? "pl-10" : "pl-3";
+  const leftPad = props.hasLeading ? "pl-10" : "pl-3";
   const rightPad = hasTrailingEffective.value ? "pr-10" : "pr-3";
 
   switch (props.size) {
@@ -308,7 +359,7 @@ const computedLabelColor = computed(() => props.labelColor);
 
 const computedInputClass = computed(() =>
   [
-    "w-full border px-0 focus:outline-none",
+    "w-full border px-0 focus:outline-none font-normal",
     props.rounding,
     props.transitionClass,
     sizeClass.value,
@@ -328,7 +379,7 @@ const inputAttrs = computed(() => {
   const pattern = props.pattern instanceof RegExp ? props.pattern.source : props.pattern;
 
   const common = {
-    placeholder: props.placeholder,
+    placeholder: props.floating && resolvedTag.value === "input" ? " " : props.placeholder,
     required: props.required,
     disabled: props.disabled,
     readonly: props.readonly,
@@ -351,7 +402,7 @@ const inputAttrs = computed(() => {
   if (props.as === "select") {
     return { ...common };
   }
-return { type: currentType.value, ...common };
+  return { type: currentType.value, ...common };
 });
 
 function onInput(e: Event) {
@@ -365,15 +416,26 @@ function onInput(e: Event) {
 function onKeydown(e: KeyboardEvent) {
   // filtro caratteri ammessi (se configurato)
   if (props.allowedChars) {
-    const regex = props.allowedChars instanceof RegExp
-      ? props.allowedChars
-      : new RegExp(props.allowedChars as string);
+    const regex =
+      props.allowedChars instanceof RegExp
+        ? props.allowedChars
+        : new RegExp(props.allowedChars as string);
     const key = e.key;
     const ctrlCmd = e.ctrlKey || e.metaKey;
     const navKeys = [
-      "Backspace","Delete","Tab","Enter","Escape","ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"
+      "Backspace",
+      "Delete",
+      "Tab",
+      "Enter",
+      "Escape",
+      "ArrowLeft",
+      "ArrowRight",
+      "ArrowUp",
+      "ArrowDown",
+      "Home",
+      "End",
     ];
-    if (ctrlCmd && ["a","c","v","x","z","y"].includes(key.toLowerCase())) {
+    if (ctrlCmd && ["a", "c", "v", "x", "z", "y"].includes(key.toLowerCase())) {
       // allow shortcuts
     } else if (navKeys.includes(key)) {
       // allow navigation keys
@@ -400,6 +462,7 @@ function onChange(e: Event) {
 
 function onBlur(e: FocusEvent) {
   // NEW
+  isFocused.value = false;
   emit("blur", e);
   if (props.type === "email" && props.validateOn === "blur") {
     const val = (e.target as HTMLInputElement)?.value ?? "";
@@ -407,11 +470,17 @@ function onBlur(e: FocusEvent) {
   }
 }
 
+function onFocus(e: FocusEvent) {
+  isFocused.value = true;
+  emit("focus", e);
+}
+
 function onPaste(e: ClipboardEvent) {
   if (!props.allowedChars) return;
-  const regex = props.allowedChars instanceof RegExp
-    ? props.allowedChars
-    : new RegExp(props.allowedChars as string);
+  const regex =
+    props.allowedChars instanceof RegExp
+      ? props.allowedChars
+      : new RegExp(props.allowedChars as string);
   const text = e.clipboardData?.getData("text") ?? "";
   for (const ch of text) {
     if (!regex.test(ch)) {

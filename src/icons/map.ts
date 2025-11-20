@@ -11,6 +11,7 @@ import {
   ServerStackIcon,
   GlobeAltIcon,
   CpuChipIcon,
+  ComputerDesktopIcon,
   BoltIcon,
 
   // Utenti
@@ -190,4 +191,6 @@ export const iconMap: Record<string, any> = {
   vlan: Squares2X2Icon,
   acl: ShieldCheckIcon,
   router: ServerStackIcon,
+  // Devices
+  devices: ComputerDesktopIcon,
 };

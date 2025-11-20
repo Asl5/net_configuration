@@ -1,6 +1,6 @@
 <template>
   <div ref="rootEl" :class="[rootClass, wrapperClass]" class="relative">
-    <BaseLabel v-if="label" :text="label" as="label" size="sm" text-color="text-gray-700" />
+    <BaseLabel v-if="label && !floating" :text="label" as="label" size="sm" text-color="text-gray-700" />
 
     <div class=" ">
 <div class="relative">
@@ -8,10 +8,9 @@
     :name="name"
     :autocomplete="autocomplete"
     :required="required"
-    class="block w-full rounded-md border border-gray-300 pl-3 pr-10 py-2 text-sm text-black placeholder-gray-400
-           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 bg-white"
+    class="block w-full rounded-md border border-gray-300 pl-3 pr-10 py-2 text-sm text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 bg-white text-left placeholder:text-left placeholder:font-normal"
     :class="inputClass"
-    :placeholder="placeholder || (format || 'DD/MM/YYYY')"
+    :placeholder="floating ? ' ' : (placeholder || (format || 'DD/MM/YYYY'))"
     :value="displayValue"
     :disabled="disabled"
     @input="onManualInput"
@@ -19,7 +18,23 @@
     @keydown.down.prevent="openPopup"
     @keydown.enter.prevent="confirmTyped"
     @keydown.esc.prevent="closePopup"
+    @focus="isFocused = true"
+    @blur="isFocused = false"
   />
+
+  <!-- Floating label -->
+  <label
+    v-if="floating && label"
+    class="absolute pointer-events-none z-10 transition-all duration-150 text-sm"
+    :class="[
+      'left-3',
+      isFloatingActive ? 'top-0 -translate-y-1/2 text-xs px-1 font-bold' : 'top-1/2 -translate-y-1/2 font-normal',
+      'text-gray-500',
+      'bg-white'
+    ]"
+  >
+    {{ label }}
+  </label>
 
   <!-- icona calendario -->
   <span
@@ -99,7 +114,7 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import BaseLabel from '@/components/base/BaseLabel.vue';
 
 /* props */
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: string | null;
   label?: string;
   placeholder?: string;
@@ -120,7 +135,11 @@ const props = defineProps<{
   firstDayOfWeek?: 1 | 0;
   locale?: string;
   closeOnSelect?: boolean;
-}>();
+  floating?: boolean;
+}>(), { floating: true });
+
+// expose reactivity alias for template convenience
+const floating = computed(() => props.floating);
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: string | null): void
@@ -141,6 +160,8 @@ const popupEl = ref<HTMLElement|null>(null);
 
 /* helpers */
 const displayValue = computed(() => internalValue.value || '');
+const isFocused = ref(false);
+const isFloatingActive = computed(() => isFocused.value || popupOpen.value || !!displayValue.value);
 const today = startOfDay(new Date());
 const viewDate = ref<Date>(parseItToDate(internalValue.value || '') || today);
 const viewYear = computed(() => viewDate.value.getFullYear());

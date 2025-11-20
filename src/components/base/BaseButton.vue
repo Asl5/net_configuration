@@ -151,7 +151,7 @@ const variantClass = computed(() => {
     case "link":
       return "bg-transparent text-blue-600 underline underline-offset-2 hover:opacity-90";
     case "third":
-      return "bg-blue-600 text-white hover:bg-blue-700";
+      return "bg-blue-300 text-blue-700 hover:bg-blue-200";
     default:
       return "bg-green-300 text-green-700 hover:bg-green-200"; // primary
   }

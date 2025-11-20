@@ -1,7 +1,7 @@
 ﻿<template>
   <div :class="['inline-flex', fit ? 'w-auto' : '', wrapperClass]">
-    <div class="w-full">
-      <label v-if="label" class="block text-sm font-medium  text-gray-700">
+    <div class="w-full mb-1">
+      <label v-if="label && !floating" class="block text-sm font-medium text-gray-700">
         {{ label }}
       </label>
 
@@ -11,14 +11,29 @@
           type="button"
           @click="toggleOpen"
           :disabled="disabled"
-          class="border rounded-lg text-sm bg-white shadow-sm py-2 pl-3 pr-10 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
+          class="border rounded-lg text-sm bg-white shadow-sm py-2 pl-3 pr-10 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full h-10 flex items-center"
+          @focus="isFocused = true"
+          @blur="isFocused = false"
         >
           <span v-if="selectedOption" class="truncate text-gray-900">
             {{ selectedOption.label }}
           </span>
-          <span v-else class="text-gray-400">
-            {{ placeholder || "Seleziona…" }}
-          </span>
+          <!-- <span v-else class="text-gray-400">
+            {{ placeholder || " " }}
+          </span> -->
+
+          <!-- Floating label overlay -->
+          <label
+            v-if="floating && label"
+            class="absolute pointer-events-none z-10 transition-all duration-150 text-sm left-3"
+            :class="[
+              isSelectActive ? 'top-0 -translate-y-1/2 text-xs px-1 font-bold' : 'top-1/2 -translate-y-1/2 font-normal',
+              'text-gray-500',
+              'bg-white'
+            ]"
+          >
+            {{ label }}
+          </label>
 
           <!-- Chevron -->
           <span class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
@@ -72,6 +87,7 @@ const props = withDefaults(
     disabled?: boolean;
     wrapperClass?: string;
     help?: string;
+    floating?: boolean;
   }>(),
   {
     modelValue: null,
@@ -82,6 +98,7 @@ const props = withDefaults(
     disabled: false,
     wrapperClass: "",
     help: "",
+    floating: true,
   }
 );
 
@@ -114,5 +131,9 @@ onBeforeUnmount(() => document.removeEventListener("click", handleClickOutside))
 const selectedOption = computed(() =>
   props.options.find((o) => o.value === props.modelValue) || null
 );
+
+// floating helpers
+const isFocused = ref(false);
+const isSelectActive = computed(() => open.value || !!selectedOption.value || isFocused.value);
 
 </script>

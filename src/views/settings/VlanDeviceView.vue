@@ -5,20 +5,34 @@
     <div class="flex flex-1 min-h-0 overflow-hidden">
       <!-- Sidebar VLAN -->
       <aside class="hidden md:flex md:w-72 border-r overflow-y-auto bg-white md:flex-col">
-        <div class="p-4 border-b flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-gray-700">VLAN</h2>
-        </div>
-        <ul class="flex-1">
-          <li
-            v-for="v in vlanList"
-            :key="String(v.ID)"
-            @click="onVlanClick(v)"
-            class="px-4 py-2 cursor-pointer hover:bg-gray-300 text-gray-700"
-            :class="v.ID === selectedVlan?.ID ? 'bg-gray-400 font-semibold text-gray-100' : ''"
+
+        <div class="flex-1">
+          <div
+            v-for="(g) in groupedVlans"
+            :key="g.key"
+            class="border-b"
           >
-            {{ v.ID_VLAN }}: {{ v.NOME_VLAN }} - {{ v.DESCRIZIONE }}
-          </li>
-        </ul>
+            <div
+              class="px-4 py-2 text-md font-bold  uppercase text-white bg-gray-400 flex items-center justify-between cursor-pointer hover:bg-gray-300 select-none"
+              @click="toggleGroup(g.key)"
+            >
+              <span>VLAN: {{ g.label }}</span>
+              <span :class="['transition-transform', isExpanded(g.key) ? 'rotate-90' : 'rotate-0']">
+                <BaseIcon name="chevronRight" size="w-4 h-4" color="text-white/80" />
+              </span>
+            </div>
+            <ul v-show="isExpanded(g.key)">
+              <li
+                v-for="v in g.items"
+                :key="String(v.ID)"
+                @click="onVlanClick(v)"
+                :class="itemClass(v)"
+              >
+                 {{ v.NOME_VLAN.toUpperCase() }} {{ v.DESCRIZIONE.toUpperCase() }}
+              </li>
+            </ul>
+          </div>
+        </div>
       </aside>
 
       <!-- Right panel: devices for selected VLAN -->
@@ -75,8 +89,12 @@
                 </div>
 
                 <div class="mt-2 flex justify-end gap-2">
-                  <BaseButton size="xs" variant="danger" @click="removeRow(idx)"
-                    >Elimina</BaseButton
+                  <BaseButton
+                    size="xs"
+                    variant="danger"
+                    @click="askDeleteRow(idx)"
+                  >
+                    Elimina</BaseButton
                   >
                 </div>
 
@@ -105,7 +123,7 @@
                 </div>
               </div>
             </div>
-            <div class="flex mt-4 md:justify-end">
+            <div v-if="devices.length > 0" class="flex mt-4 md:justify-end">
               <BaseButton size="sm" variant="primary" @click="saveAll">Salva</BaseButton>
             </div>
           </div>
@@ -124,6 +142,15 @@
       @confirm="confirmSwitchVlan"
       @cancel="cancelSwitchVlan"
     />
+    <BaseModalAlert
+      :show="showDeleteModal"
+      title="Conferma eliminazione"
+      :message="deleteMessage"
+      ok-text="Elimina"
+      cancel-text="Annulla"
+      @confirm="confirmDeleteRow"
+      @cancel="cancelDeleteRow"
+    />
   </div>
 </template>
 
@@ -134,6 +161,7 @@ import BaseButton from "@/components/base/BaseButton.vue";
 import BaseInput from "@/components/base/BaseInput.vue";
 import BaseTextArea from "@/components/base/BaseTextArea.vue";
 import BaseModalAlert from "@/components/base/BaseModalAlert.vue";
+import BaseIcon from "@/components/base/BaseIcon.vue";
 import { apiLoadVlanDevices, apiLoadVlans } from "@/services/api";
 import {
   apiInsertVlanDevice,
@@ -149,6 +177,62 @@ const selectedVlan = ref<Vlan | null>(null);
 const loading = ref(false);
 const showUnsavedModal = ref(false);
 const pendingVlan = ref<Vlan | null>(null);
+const showDeleteModal = ref(false);
+const deleteIndex = ref<number | null>(null);
+
+function vlanGroupKey(v: Vlan): string {
+  const n = Number(v.ID_VLAN);
+  if (!Number.isNaN(n)) return String(Math.floor(n / 100));
+  return (v.NOME_VLAN?.[0] || "X").toUpperCase();
+}
+
+// Alterna i gruppi: blocchi contigui ottengono bg bianco / grigio-200
+const groupedVlans = computed(() => {
+  const map = new Map<string, Vlan[]>();
+  const order: string[] = [];
+  for (const v of vlanList.value) {
+    const key = vlanGroupKey(v);
+    if (!map.has(key)) {
+      map.set(key, []);
+      order.push(key);
+    }
+    map.get(key)!.push(v);
+  }
+  return order.map((key) => {
+    const items = map.get(key)!;
+    const label = items[0]?.ID_VLAN ? String(items[0].ID_VLAN) : key;
+    return { key, label, items };
+  });
+});
+
+const expandedKey = ref<string | null>(null);
+
+watch(
+  () => [groupedVlans.value, selectedVlan.value?.ID_VLAN],
+  () => {
+    // Apri il gruppo della VLAN selezionata, altrimenti il primo disponibile
+    if (selectedVlan.value) {
+      expandedKey.value = vlanGroupKey(selectedVlan.value);
+    } else if (!expandedKey.value && groupedVlans.value.length) {
+      expandedKey.value = groupedVlans.value[0].key;
+    }
+  },
+  { immediate: true, deep: true }
+);
+
+function isExpanded(key: string) {
+  return expandedKey.value === key;
+}
+function toggleGroup(key: string) {
+  expandedKey.value = expandedKey.value === key ? null : key;
+}
+
+function itemClass(v: Vlan): string {
+  const base: string[] = ["px-4 py-2 cursor-pointer text-gray-800",  "hover:bg-gray-300"];
+  const isSelected = v.ID === (selectedVlan.value?.ID ?? null);
+  if (isSelected) base.push("bg-gray-200", "font-bold");
+  return base.join(" ");
+}
 
 type DeviceRow = VlanDevice & {
   __key: string;
@@ -268,6 +352,24 @@ function removeRow(index: number) {
   }
 }
 
+function askDeleteRow(index: number) {
+  deleteIndex.value = index;
+  showDeleteModal.value = true;
+}
+
+function confirmDeleteRow() {
+  if (deleteIndex.value !== null) {
+    removeRow(deleteIndex.value);
+  }
+  deleteIndex.value = null;
+  showDeleteModal.value = false;
+}
+
+function cancelDeleteRow() {
+  deleteIndex.value = null;
+  showDeleteModal.value = false;
+}
+
 // Watch each device row for changes to populate toUpdate
 watch(
   devices,
@@ -343,12 +445,9 @@ async function saveAll() {
 
     // Deletes
     for (const d of toDelete.value) {
+      console.log(d)
       await apiDeleteVlanDevice({
-        ID_VLAN: d.ID_VLAN,
-        SERIALE: d.SERIALE,
-        HOST_NAME: d.HOST_NAME,
-        PORTA: d.PORTA,
-        IP: d.IP,
+        ID_VLAN: d.ID
       });
     }
     // Inserts
@@ -386,4 +485,13 @@ function cancelSwitchVlan() {
   pendingVlan.value = null;
   showUnsavedModal.value = false;
 }
+
+const deleteMessage = computed(() => {
+  if (deleteIndex.value === null) return "Sei sicuro di voler eliminare la riga?";
+  const d = devices.value[deleteIndex.value];
+  if (!d) return "Sei sicuro di voler eliminare la riga?";
+  const parts = [d.HOST_NAME, d.SERIALE, d.IP].filter(Boolean);
+  const what = parts.length ? parts.join(" · ") : "questa riga";
+  return `Sei sicuro di voler eliminare ${what}?`;
+});
 </script>

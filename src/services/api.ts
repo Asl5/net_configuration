@@ -158,32 +158,38 @@ export async function apiCreateVlan(payload: {
   ID_VLAN: string;
   NOME_VLAN: string;
   DESCRIZIONE: string;
+  REFERENTE?: string;
 }) {
   const p = payload;
-  return http.post(QUERY_BASE, {
-    queryId: 13,
-    params: [
-      { index: 1, value: p.ID_VLAN },
-      { index: 2, value: p.NOME_VLAN },
-      { index: 3, value: p.DESCRIZIONE },
-    ],
-  });
+  const params: any[] = [
+    { index: 1, value: p.ID_VLAN },
+    { index: 2, value: p.NOME_VLAN },
+    { index: 3, value: p.DESCRIZIONE },
+  ];
+  if ((p as any).REFERENTE !== undefined && (p as any).REFERENTE !== null && (p as any).REFERENTE !== "") {
+    params.push({ index: 4, value: (p as any).REFERENTE });
+  }
+  return http.post(QUERY_BASE, { queryId: 13, params });
 }
 
 // Modifica VLAN (queryId 14)
 export async function apiUpdateVlan(id: number, payload: {
   NOME_VLAN: string;
   DESCRIZIONE: string;
+  REFERENTE?: string;
 }) {
   const p = payload;
-  return http.post(QUERY_BASE, {
-    queryId: 14,
-    params: [
-      { index: 1, value: p.NOME_VLAN },
-      { index: 2, value: p.DESCRIZIONE },
-      { index: 3, value: id },
-    ],
-  });
+  const params: any[] = [
+    { index: 1, value: p.NOME_VLAN },
+    { index: 2, value: p.DESCRIZIONE },
+  ];
+  if ((p as any).REFERENTE !== undefined && (p as any).REFERENTE !== null && (p as any).REFERENTE !== "") {
+    params.push({ index: 3, value: (p as any).REFERENTE });
+    params.push({ index: 4, value: id });
+  } else {
+    params.push({ index: 3, value: id });
+  }
+  return http.post(QUERY_BASE, { queryId: 14, params });
 }
 
 // Associazioni VLAN-Sedi
@@ -659,19 +665,13 @@ export async function apiUpdateVlanDevice( d: VlanDevice) {
 // Delete ACL device (queryId 35)
 export async function apiDeleteVlanDevice(key: {
   ID_VLAN: string | number;
-  SERIALE: string;
-  HOST_NAME: string;
-  PORTA: string;
-  IP: string;
+
 }) {
   return http.post(QUERY_BASE, {
     queryId: 35,
     params: [
       { index: 1, value: String(key.ID_VLAN) },
-      { index: 2, value: key.SERIALE ?? "" },
-      { index: 3, value: key.HOST_NAME ?? "" },
-      { index: 4, value: key.PORTA ?? "" },
-      { index: 5, value: key.IP ?? "" },
+
     ],
   });
 }

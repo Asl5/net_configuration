@@ -6,7 +6,7 @@
       <aside class="hidden md:flex md:w-72 border-r overflow-y-auto bg-white md:flex-col">
         <div class="p-4 border-b flex items-center justify-between">
           <h2 class="text-sm font-semibold text-gray-700">Sedi</h2>
-          <BaseButton size="xs" variant="primary" @click="openAdd">+</BaseButton>
+          <BaseButton size="xs" variant="primary" @click="openAdd">NUOVA</BaseButton>
         </div>
         <ul class="flex-1">
           <li
@@ -47,7 +47,7 @@
                 label="Data aggiornamento"
 
               />
-                 <div class="flex items-center gap-3 mt-6">
+                 <div class="flex items-center gap-3 ">
                 <input id="attiva" type="checkbox" v-model="attivaBool" class="h-4 w-4" />
                 <label for="attiva" class="text-sm text-gray-700">Attiva</label>
               </div>
@@ -77,7 +77,7 @@
             <BaseInput v-model="newSede.COD_UNIVOCO_INFRATEL" label="Cod. univoco Infratel" />
             <BaseInput v-model="newSede.CONNETTIVITA" label="Connettività" />
             <BaseInput v-model="newSede.NOTE" label="Note" />
-            <div class="flex items-center gap-3 mt-6">
+            <div class="flex items-center gap-3 ">
               <input id="attiva2" type="checkbox" v-model="newAttivaBool" class="h-4 w-4" />
               <label for="attiva2" class="text-sm text-gray-700">Attiva</label>
             </div>

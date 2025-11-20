@@ -7,7 +7,7 @@
       <aside class="hidden md:flex md:w-72 border-r overflow-y-auto bg-white md:flex-col">
         <div class="p-4 border-b flex items-center justify-between">
           <h2 class="text-sm font-semibold text-gray-700">Elenco ACL</h2>
-          <BaseButton size="xs" variant="primary" @click="openAdd">+</BaseButton>
+          <BaseButton size="xs" variant="primary" @click="openAdd">NUOVA</BaseButton>
         </div>
 
         <ul class="flex-1">

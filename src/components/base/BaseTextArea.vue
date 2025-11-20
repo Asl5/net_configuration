@@ -4,6 +4,7 @@
     v-bind="forwardedAttrs"
     :model-value="modelValue"
     as="textarea"
+    floating
     :root-class="rootClass"
     :input-class="componentClass"
     @update:modelValue="$emit('update:modelValue', $event)"

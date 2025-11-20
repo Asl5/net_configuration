@@ -3,24 +3,38 @@
     <BaseHeader title="Gestione VLAN" />
     <div class="flex flex-1 min-h-0 overflow-hidden">
       <!-- Sidebar -->
-      <aside class="hidden md:flex md:w-72 border-r overflow-y-auto bg-white md:flex-col">
+      <aside class="hidden md:flex md:w-96 border-r overflow-y-auto bg-white md:flex-col">
         <div class="p-4 border-b flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-gray-700">VLAN</h2>
-          <BaseButton size="xs" variant="primary" @click="openAdd">+</BaseButton>
+          <!-- <h2 class="text-sm font-semibold text-gray-700">VLAN</h2> -->
+          <BaseButton size="xs" variant="primary" @click="openAdd">NUOVA</BaseButton>
         </div>
-        <ul class="flex-1">
-          <li
-            v-for="v in vlanList"
-            :key="v.ID"
-            @click="onVlanClick(v)"
-            class="px-4 py-2 cursor-pointer hover:bg-gray-300 text-gray-700"
-            :class="
-              v.ID === selectedVlan?.ID ? 'bg-gray-400 font-semibold text-gray-100' : ''
-            "
+        <div class="flex-1">
+          <div
+            v-for="g in groupedVlans"
+            :key="g.key"
+            class="border-b"
           >
-            {{ v.ID_VLAN }}: {{ v.NOME_VLAN }} - {{ v.DESCRIZIONE }}
-          </li>
-        </ul>
+            <div
+              class="px-4 py-2 text-md font-bold uppercase text-white bg-gray-400 flex items-center justify-between cursor-pointer hover:bg-gray-300 select-none"
+              @click="toggleGroup(g.key)"
+            >
+              <span>VLAN: {{ g.label }}</span>
+              <span :class="['transition-transform', isExpanded(g.key) ? 'rotate-90' : 'rotate-0']">
+                <BaseIcon name="chevronRight" size="w-4 h-4" color="text-white"  />
+              </span>
+            </div>
+            <ul v-show="isExpanded(g.key)">
+              <li
+                v-for="v in g.items"
+                :key="v.ID"
+                @click="onVlanClick(v)"
+                :class="itemClass(v)"
+              >
+                 {{ v.NOME_VLAN.toUpperCase() }} {{ v.DESCRIZIONE.toUpperCase() }}
+              </li>
+            </ul>
+          </div>
+        </div>
       </aside>
 
       <!-- Dettaglio -->
@@ -29,7 +43,7 @@
           <div class="w-full bg-white rounded-lg shadow p-4 md:p-6 space-y-4">
             <div class="flex items-center justify-between">
               <h2 class="text-lg font-semibold text-gray-800">
-                {{ displayNome }}
+                VLAN {{ selectedVlan.ID_VLAN }} - {{ displayNome }}
                 <span v-if="isDirty" class="ml-2 text-xs text-orange-600"
                   >(modifiche non salvate)</span
                 >
@@ -40,23 +54,16 @@
             </div>
 
             <div class="grid grid-cols-12 gap-4 items-start">
-              <div class="col-span-2">
-                <BaseInput
-                  v-model.number="selectedVlan.ID_VLAN"
-                  label="ID VLAN"
-                  type="number"
-                  :disabled="true"
-                />
+              <div class="col-span-4 space-y-3">
+                <BaseInput :floating="true" v-model="selectedVlan.NOME_VLAN" label="Nome VLAN" size="md" />
+                <BaseInput v-model="selectedVlan.REFERENTE!" label="Referente" />
               </div>
-              <div class="col-span-4">
-                <BaseInput v-model="selectedVlan.NOME_VLAN" label="Nome VLAN" size="md" />
-              </div>
-              <div class="col-span-6">
+              <div class="col-span-8">
                 <BaseTextArea
                   v-model="selectedVlan.DESCRIZIONE"
                   label="Descrizione"
                   placeholder="Descrizione"
-                  class="w-full resize-y min-h-14"
+                  class="w-full resize-y min-h-24"
                 />
               </div>
             </div>
@@ -76,7 +83,7 @@
     <!-- Modale nuova VLAN -->
     <BaseModal v-model="showAdd" title="Nuova Vlan" height="40vh" max-width="50vw">
       <div class="grid grid-cols-2 md:grid-cols-2 gap-4">
-        <BaseInput v-model.number="newVlan.ID_VLAN" label="ID VLAN" type="number" />
+        <BaseInput  v-model.number="newVlan.ID_VLAN" label="ID VLAN" type="number" />
         <BaseInput v-model="newVlan.NOME_VLAN" label="Nome VLAN" />
       </div>
       <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
@@ -86,6 +93,9 @@
           placeholder="Descrizione"
           class="w-full resize-y min-h-28"
         />
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-2 gap-4">
+        <BaseInput v-model="newVlan.REFERENTE!" label="Referente" />
       </div>
       <div class="mt-3 flex justify-end gap-2 w-full">
         <BaseButton variant="secondary" @click="closeAdd">Annulla</BaseButton>
@@ -255,6 +265,7 @@ import BaseLabel from "@/components/base/BaseLabel.vue";
 import BaseSelect from "@/components/base/BaseSelect.vue";
 // import BaseCalendar from "@/components/base/BaseCalendar.vue";
 import BaseModalAlert from "@/components/base/BaseModalAlert.vue";
+import BaseIcon from "@/components/base/BaseIcon.vue";
 import {
   apiLoadVlans,
   apiCreateVlan,
@@ -271,6 +282,7 @@ type Vlan = {
   ID: number;
   NOME_VLAN: string;
   DESCRIZIONE: string;
+  REFERENTE?: string;
 };
 
 /* ================== Stato ================== */
@@ -302,6 +314,59 @@ const sediOptions = ref<{ label: string; value: number }[]>([]);
 /* ================== Computed ================== */
 const displayNome = computed(() => selectedVlan.value?.NOME_VLAN ?? "");
 
+// === Sidebar grouping (as in VlanDeviceView) ===
+function vlanGroupKey(v: Vlan): string {
+  return String(v.ID_VLAN ?? "");
+}
+
+const groupedVlans = computed(() => {
+  const map = new Map<string, Vlan[]>();
+  const order: string[] = [];
+  for (const v of vlanList.value) {
+    const key = vlanGroupKey(v);
+    if (!map.has(key)) {
+      map.set(key, []);
+      order.push(key);
+    }
+    map.get(key)!.push(v);
+  }
+  return order.map((key) => {
+    const items = map.get(key)!;
+    const label = items[0]?.ID_VLAN ? String(items[0].ID_VLAN) : key;
+    return { key, label, items };
+  });
+});
+
+const expandedKey = ref<string | null>(null);
+watch(
+  () => [groupedVlans.value, selectedVlan.value?.ID_VLAN],
+  () => {
+    if (selectedVlan.value) {
+      expandedKey.value = vlanGroupKey(selectedVlan.value);
+    } else if (!expandedKey.value && groupedVlans.value.length) {
+      expandedKey.value = groupedVlans.value[0].key;
+    }
+  },
+  { immediate: true, deep: true }
+);
+
+function isExpanded(key: string) {
+  return expandedKey.value === key;
+}
+function toggleGroup(key: string) {
+  expandedKey.value = expandedKey.value === key ? null : key;
+}
+
+function itemClass(v: Vlan): string {
+  const base: string[] = [
+    "px-4 py-2 cursor-pointer text-gray-800",
+
+    "hover:bg-gray-300",
+  ];
+  if (v.ID === (selectedVlan.value?.ID ?? null)) base.push("bg-gray-300", "font-semibold");
+  return base.join(" ");
+}
+
 /* ================== Load / Select ================== */
 async function reload() {
   const { data } = await apiLoadVlans();
@@ -311,6 +376,7 @@ async function reload() {
     ID_VLAN: r.ID_VLAN ?? "",
     NOME_VLAN: r.NOME_VLAN ?? "",
     DESCRIZIONE: r.DESCRIZIONE ?? "",
+    REFERENTE: r.REFERENTE ?? "",
   }));
   if (vlanList.value.length && !selectedVlan.value) selectVlan(vlanList.value[0]);
 }
@@ -610,6 +676,7 @@ async function save() {
   await apiUpdateVlan(selectedVlan.value.ID, {
     NOME_VLAN: selectedVlan.value.NOME_VLAN,
     DESCRIZIONE: selectedVlan.value.DESCRIZIONE,
+    REFERENTE: selectedVlan.value.REFERENTE,
   });
   const idx = vlanList.value.findIndex((x) => x.ID === selectedVlan.value?.ID);
   if (idx !== -1) vlanList.value[idx] = JSON.parse(JSON.stringify(selectedVlan.value));
@@ -625,6 +692,7 @@ const newVlan = reactive<Vlan>({
   ID_VLAN: "",
   NOME_VLAN: "",
   DESCRIZIONE: "",
+  REFERENTE: "",
 });
 
 function openAdd() {
@@ -654,3 +722,4 @@ const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
 window.addEventListener("beforeunload", beforeUnloadHandler);
 const showAssocSavedModal = ref(false);
 </script>
+

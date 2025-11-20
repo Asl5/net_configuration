@@ -109,7 +109,7 @@ const router = createRouter({
           component: () => import("../views/settings/VlanDeviceView.vue"),
           meta: {
             public: true,
-            title: "VLAN Device View",
+            title: "VLAN Device Settings",
             nav: true,
             order: 4,
             parent: "settings",
