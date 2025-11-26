@@ -377,6 +377,7 @@ function openAddInterface() {
 }
 
 function selectRouter(r: any) {
+  console.log(selectedRouter.value)
   selectedRouter.value = JSON.parse(JSON.stringify(r));
   if (selectedRouter.value) {
     const v = selectedRouter.value.ID;

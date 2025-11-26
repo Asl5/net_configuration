@@ -40,7 +40,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <!-- <BaseInput v-model.number="selectedAcl.NUMERO" label="Numero ACL" type="text" disabled /> -->
             <div class="col-span-1 sm:col-span-1">
-              <div class="flex items-end gap-4 w-full">
+              <div class="flex  gap-4 w-full">
                 <BaseSelect
                   v-model="selectedAcl.DIREZIONE"
                   label="Direzione"
@@ -53,12 +53,12 @@
                 <BaseInput v-model="selectedAcl.DESCRIZIONE" label="Descrizione" />
               </div>
               <!-- Incolla configurazione (parse automatico, senza bottoni) -->
-              <div class="col-span-2 sm:col-span-2">
+              <div class="mt-2 col-span-2 sm:col-span-2">
                 <BaseInput
                   v-model="pasteText"
                   as="textarea"
-                  label="Incolla configurazione ACL Cisco"
-                  rows="8"
+                  label=""
+                  rows="15"
                   class="font-mono text-xs"
                   placeholder="Incolla righe tipo: access-list 135 permit tcp host 1.2.3.4 eq 80 any"
                 />

@@ -2,6 +2,8 @@
 
 // services/auth.ts
 import { jwtDecode } from "jwt-decode";
+import axios from "axios";
+import { AUTH_BASE } from "@/config/config";
 
 let accessToken: string | null = null;
 
@@ -31,4 +33,17 @@ export function isExpiringSoon(token: string, skewSec = 30) {
 export function authHeader(): HeadersInit {
   const t = getToken();
   return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
+// Full logout: clears access token and invalidates refresh cookie (server side)
+export async function logout(): Promise<void> {
+  try {
+    await axios.post(`${AUTH_BASE}/logout`, {}, {
+      withCredentials: true,
+      headers: { "X-Requested-By": "webapp" },
+    });
+  } catch {
+    // ignore network/endpoint errors; still clear local state
+  }
+  clearToken();
 }

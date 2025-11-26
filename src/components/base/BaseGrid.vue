@@ -15,15 +15,25 @@
       <table :class="[tableClass, 'min-w-full divide-y', dividerColorClass]">
         <!-- Header -->
         <thead :class="[headerBgClass, stickyHeader ? 'sticky top-0 z-10' : '', 'relative']">
-          <!-- Pulsante refresh -->
-          <div v-if="showRefresh" class="absolute inset-y-0 right-2 flex items-center">
+          <!-- Pulsanti header (refresh, export) -->
+          <div v-if="showRefresh || showExport" class="absolute inset-y-0 right-2 flex items-center gap-2">
             <button
+              v-if="showRefresh"
               class="text-gray-500 hover:text-gray-700 p-2 rounded-md hover:bg-gray-100"
               @click="emit('refresh')"
               aria-label="Aggiorna"
               title="Aggiorna"
             >
               <font-awesome-icon icon="rotate-right" />
+            </button>
+            <button
+              v-if="showExport"
+              class="text-gray-500 hover:text-gray-700 p-2 rounded-md hover:bg-gray-100"
+              @click="onExportClick"
+              aria-label="Esporta"
+              title="Esporta"
+            >
+              <font-awesome-icon icon="file-arrow-down" />
             </button>
           </div>
 
@@ -45,7 +55,7 @@
                 alignClass(col.align),
                 col.width,
                 col.headerClass,
-                showRefresh && ci === flatColumns.length - 1 ? 'pr-12' : '',
+                (showRefresh || showExport) && ci === flatColumns.length - 1 ? 'pr-14' : '',
               ]"
             >
               <div
@@ -293,6 +303,8 @@ const props = withDefaults(
     stickyHeader?: boolean;
     zebra?: boolean;
     showRefresh?: boolean;
+    showExport?: boolean;
+    exportMode?: 'page' | 'all';
 
     /** Scorrimento */
     scrollX?: boolean;
@@ -362,6 +374,8 @@ const props = withDefaults(
     expandable: false,
     expandField: "_children",
     expandMaxHeight: "16rem",
+    showExport: false,
+    exportMode: 'page',
   }
 );
 
@@ -370,6 +384,7 @@ const emit = defineEmits<{
   (e: "edit", row: RowLike, index: number): void;
   (e: "remove", row: RowLike, index: number): void;
   (e: "refresh"): void;
+  (e: "export", rows: RowLike[]): void;
 }>();
 
 const filters = ref<Record<string, string>>({});
@@ -398,6 +413,11 @@ const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageS
 const startIndex = computed(() => (page.value - 1) * pageSize.value);
 const endIndex = computed(() => Math.min(startIndex.value + pageSize.value, totalItems.value));
 const pagedItems = computed(() => filteredItems.value.slice(startIndex.value, endIndex.value));
+
+function onExportClick() {
+  const rows = props.exportMode === 'all' ? filteredItems.value : pagedItems.value;
+  emit('export', rows);
+}
 
 function prevPage() {
   if (page.value > 1) page.value--;
@@ -453,4 +473,3 @@ const expandColumnsResolved = computed<GridColumn<RowLike>[]>(() => {
   ];
 });
 </script>
-

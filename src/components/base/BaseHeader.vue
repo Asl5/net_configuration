@@ -1,7 +1,7 @@
 ﻿<!-- src/components/base/BaseHeader.vue -->
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { RouterLink } from "vue-router";
+import { RouterLink, useRouter } from "vue-router";
 import BaseButton from "@/components/base/BaseButton.vue";
 import BaseModalAlert from "@/components/base/BaseModalAlert.vue";
 import { useNav, type NavItem } from "@/router/useNav";
@@ -11,6 +11,7 @@ import BaseIcon from "@/components/base/BaseIcon.vue";
 // import BaseInput from "@/components/base/BaseInput.vue";
 // import BaseSelect from "@/components/base/BaseSelect.vue";
 import { useRightsStore } from "@/stores/rights";
+import { logout } from "@/services/auth";
 
 const showHelp = ref(false);
 const helpSending = ref(false);
@@ -92,9 +93,12 @@ const effectiveNav = computed(() => {
 const showLogoutModal = ref(false);
 const rightsStore = useRightsStore();
 rightsStore.hydrateFromSession();
-function doLogout() {
+const router = useRouter();
+async function doLogout() {
   showLogoutModal.value = false;
-  window.location.href = "/net_configuration/login";
+  try { await logout(); } catch {}
+  try { rightsStore.clear(); } catch {}
+  router.replace({ name: "login" });
 }
 </script>
 

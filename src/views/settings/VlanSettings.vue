@@ -54,7 +54,7 @@
             </div>
 
             <div class="grid grid-cols-12 gap-4 items-start">
-              <div class="col-span-4 space-y-3">
+              <div class="col-span-4 space-y-5">
                 <BaseInput :floating="true" v-model="selectedVlan.NOME_VLAN" label="Nome VLAN" size="md" />
                 <BaseInput v-model="selectedVlan.REFERENTE!" label="Referente" />
               </div>
@@ -82,21 +82,25 @@
 
     <!-- Modale nuova VLAN -->
     <BaseModal v-model="showAdd" title="Nuova Vlan" height="40vh" max-width="50vw">
-      <div class="grid grid-cols-2 md:grid-cols-2 gap-4">
-        <BaseInput  v-model.number="newVlan.ID_VLAN" label="ID VLAN" type="number" />
-        <BaseInput v-model="newVlan.NOME_VLAN" label="Nome VLAN" />
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+        <!-- Colonna sinistra: input uno sotto l'altro -->
+        <div class="flex flex-col gap-4">
+          <BaseInput  v-model.number="newVlan.ID_VLAN" label="ID VLAN" type="number" />
+          <BaseInput v-model="newVlan.NOME_VLAN" label="Nome VLAN" />
+          <BaseInput v-model="newVlan.REFERENTE!" label="Referente" />
+        </div>
+
+        <!-- Colonna destra: textarea alta quanto i 3 input -->
+        <div class="h-full">
+          <BaseTextArea
+            v-model="newVlan.DESCRIZIONE"
+            label="Descrizione"
+            placeholder="Descrizione"
+            class="w-full h-full min-h-36"
+          />
+        </div>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
-        <BaseTextArea
-          v-model="newVlan.DESCRIZIONE"
-          label="Descrizione"
-          placeholder="Descrizione"
-          class="w-full resize-y min-h-28"
-        />
-      </div>
-      <div class="grid grid-cols-2 md:grid-cols-2 gap-4">
-        <BaseInput v-model="newVlan.REFERENTE!" label="Referente" />
-      </div>
+
       <div class="mt-3 flex justify-end gap-2 w-full">
         <BaseButton variant="secondary" @click="closeAdd">Annulla</BaseButton>
         <BaseButton variant="primary" @click="create">Crea</BaseButton>
@@ -106,22 +110,22 @@
     <!-- Modal associazione VLAN -> Sede -->
 <BaseModal
   v-model="showAssociate"
-  title="Associa VLAN a Sede"
+  :title="`Associa sede a VLAN:  ${ associationForVlanIdNumber  }`"
   height="75vh"
-  body-class="flex flex-col !pr-4 !pt-0 !pb-2 h-full"
+  body-class="flex flex-col   h-full"
 >
   <!-- HEADER STICKY -->
   <div
-    class="sticky top-0 z-10 -mx-4 p-2 pt-2 flex items-center justify-between bg-gray-200 border-b border-gray-200 shadow-lg"
+    class="sticky top-0 z-10  p-2  flex items-center justify-between  "
   >
-     <BaseLabel
+     <!-- <BaseLabel
         as="h1"
         :text="`ID VLAN:  ${ associationForVlanIdNumber  }`"
         size="lg"
         weight="bold" textColor="text-gray-700"
-      />
-
-    <BaseButton size="xs" variant="primary" @click="addAssociationForm">Aggiungi</BaseButton>
+      /> -->
+<div></div>
+    <BaseButton size="xs" variant="third" @click="addAssociationForm">Aggiungi</BaseButton>
   </div>
 
   <!-- CORPO SCORREVOLE -->
@@ -129,7 +133,7 @@
     <div
       v-for="(form, idx) in associationForms"
       :key="idx"
-      class=" w-full bg-white rounded-lg shadow-lg p-2 md:p-2 space-y-4"
+      class=" w-full bg-white  p-2 md:p-2 space-y-4 border-b-2 border-gray-400"
     >
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <BaseSelect
@@ -208,7 +212,7 @@
 
   <!-- FOOTER FISSO -->
   <div
-    class="sticky bottom-0 z-10 -mx-4 pt-2 pr-2 pb-0 flex justify-end gap-2 bg-white border-t border-gray-200"
+    class="sticky bottom-0 z-10 -mx-4 pt-2 pr-2 pb-0 flex justify-end gap-2 bg-gray-50 border-t border-gray-200"
   >
     <BaseButton variant="secondary" @click="closeAssociate">Chiudi</BaseButton>
     <BaseButton variant="primary" @click="saveAllAssociations">Salva</BaseButton>
@@ -261,7 +265,7 @@ import BaseButton from "@/components/base/BaseButton.vue";
 import BaseInput from "@/components/base/BaseInput.vue";
 import BaseTextArea from "@/components/base/BaseTextArea.vue";
 import BaseModal from "@/components/base/BaseModal.vue";
-import BaseLabel from "@/components/base/BaseLabel.vue";
+// import BaseLabel from "@/components/base/BaseLabel.vue";
 import BaseSelect from "@/components/base/BaseSelect.vue";
 // import BaseCalendar from "@/components/base/BaseCalendar.vue";
 import BaseModalAlert from "@/components/base/BaseModalAlert.vue";
@@ -696,6 +700,12 @@ const newVlan = reactive<Vlan>({
 });
 
 function openAdd() {
+  // Reset campi ogni volta che si apre la modale
+  newVlan.ID = 0;
+  newVlan.ID_VLAN = "";
+  newVlan.NOME_VLAN = "";
+  newVlan.DESCRIZIONE = "";
+  newVlan.REFERENTE = "";
   showAdd.value = true;
 }
 function closeAdd() {
@@ -722,4 +732,3 @@ const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
 window.addEventListener("beforeunload", beforeUnloadHandler);
 const showAssocSavedModal = ref(false);
 </script>
-

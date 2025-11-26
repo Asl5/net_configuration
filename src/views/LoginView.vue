@@ -23,7 +23,7 @@
               type="text"
               placeholder="Username"
               :invalid="!!errors.email"
-              :data-error="errors.email"
+              :data-error="errors.email" class="mb-6"
             />
 
             <BaseInput

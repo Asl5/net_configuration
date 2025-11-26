@@ -5,9 +5,9 @@
     <div class="flex flex-1 overflow-hidden">
       <!-- Sidebar VLAN -->
       <aside class="hidden md:flex md:w-72 border-r overflow-y-auto bg-white md:flex-col">
-        <div class="p-4 border-b flex items-center justify-between">
+        <!-- <div class="p-4 border-b flex items-center justify-between">
           <h2 class="text-sm font-semibold text-gray-700">VLAN</h2>
-        </div>
+        </div> -->
         <ul class="flex-1">
           <li
             v-for="(v, i) in vlanList"
@@ -18,7 +18,7 @@
               v.ID_VLAN === selectedVlan?.ID_VLAN ? 'bg-gray-400 font-semibold text-gray-100' : ''
             "
           >
-            {{ v.ID_VLAN }}
+            VLAN - {{ v.ID_VLAN }}
           </li>
         </ul>
       </aside>
@@ -72,6 +72,8 @@
                 :expand-columns="ruleColumns"
                 :show-pagination="true"
                 :page-size="10"
+                :showExport="true"
+                exportMode="page"
                 bordered
                 expand-max-height="16rem"
                 sticky-header
@@ -82,6 +84,7 @@
                 zebra-even-class="bg-gray-50"
                 :showRefresh="false"
                 zebra
+                @export="onExportGrid"
               />
             </div>
 
@@ -435,6 +438,7 @@ import TopologyTree from "@/components/custom/TopologyTree.vue";
 import BaseGrid from "@/components/base/BaseGrid.vue";
 import { textCol, type GridColumn } from "@/grids/columns";
 import { apiLoadVlans, apiLoadVlanPanoramica } from "@/services/api";
+import { exportGridToExcelStyled } from "@/utils/utils";
 import { apiLoadDevicesForVlan } from "@/services/api";
 
 const vlanList = ref<any[]>([]);
@@ -941,4 +945,24 @@ function toggleVlan(sede: string, vlan: { id: string | number; name: string }) {
 }
 
 onMounted(() => loadVlans());
+
+function onExportGrid(rows: any[]) {
+  try {
+    const exportCols = columns.map((c) => ({ key: c.key as string, label: c.label as string }));
+    const vlanId = (selectedVlan.value as any)?.ID_VLAN ?? '';
+    const filename = `vlan_${vlanId}_tabellare.xls`;
+    exportGridToExcelStyled({
+      columns: exportCols as any,
+      items: rows,
+      filename,
+      headerBg: '#e5e7eb', // grigio header
+      headerText: '#1f2937', // testo header
+      zebraOdd: '#ffffff',
+      zebraEven: '#f3f4f6', // righe alternate
+      borderColor: '#e5e7eb',
+    });
+  } catch (e) {
+    console.error('Export failed', e);
+  }
+}
 </script>

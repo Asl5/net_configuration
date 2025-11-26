@@ -103,6 +103,100 @@ writeFileXLSX(wb, filename);
 
 
 
+// HTML-based Excel export with styling (header color + zebra rows)
+export function exportGridToExcelStyled(opts: {
+  columns: ExportColumn[];
+  items: any[];
+  filename?: string; // e.g. "report.xls"
+  headerBg?: string; // e.g. "#e5e7eb" (Tailwind gray-200)
+  headerText?: string; // e.g. "#1f2937" (gray-800)
+  zebraEven?: string; // even row bg
+  zebraOdd?: string; // odd row bg
+  borderColor?: string; // cell borders
+}) {
+  const {
+    columns,
+    items,
+    filename = "export.xls",
+    headerBg = "#e5e7eb",
+    headerText = "#1f2937",
+    zebraEven = "#f9fafb",
+    zebraOdd = "#ffffff",
+    borderColor = "#e5e7eb",
+  } = opts;
+
+  if (!Array.isArray(columns) || columns.length === 0)
+    throw new Error("exportGridToExcelStyled: columns è vuoto");
+  if (!Array.isArray(items))
+    throw new Error("exportGridToExcelStyled: items deve essere un array");
+
+  const escape = (v: any) => {
+    if (v == null) return "";
+    return String(v)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;");
+  };
+
+  const cols = columns.map((c) => ({ key: c.key, label: c.label || c.key, fmt: c.formatter }));
+  const header = cols
+    .map(
+      (c) =>
+        `<th style="background:${headerBg};color:${headerText};border:1px solid ${borderColor};padding:6px 8px;text-align:left;font-weight:600">${escape(
+          c.label
+        )}</th>`
+    )
+    .join("");
+
+  const rowsHtml = items
+    .map((row, i) => {
+      const isEven = i % 2 === 1; // even (1-based) rows styled, odd left default
+      const trStyle = isEven ? ` style=\"background:${zebraEven}\"` : "";
+      const tds = cols
+        .map((c) => {
+          let raw = row?.[c.key as any];
+          if (typeof c.fmt === "function") {
+            try { raw = c.fmt(raw, row); } catch {}
+          }
+          if (Array.isArray(raw) || (raw && typeof raw === "object")) raw = JSON.stringify(raw);
+          return `<td style=\"border:1px solid ${borderColor};padding:6px 8px;\">${escape(raw)}</td>`;
+        })
+        .join("");
+      return `<tr${trStyle}>${tds}</tr>`;
+    })
+    .join("");
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Export</title>
+  <style>
+    table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <table>
+    <thead><tr>${header}</tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>
+  <!-- Excel HTML Export -->
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename.endsWith(".xls") || filename.endsWith(".xlsx") ? filename : `${filename}.xls`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 0);
+}
+
 export function exportToExcelAoA(opts: {
   aoa: any[][];
   filename: string;

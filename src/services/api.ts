@@ -169,6 +169,7 @@ export async function apiCreateVlan(payload: {
   if ((p as any).REFERENTE !== undefined && (p as any).REFERENTE !== null && (p as any).REFERENTE !== "") {
     params.push({ index: 4, value: (p as any).REFERENTE });
   }
+  console.log("sewrhb")
   return http.post(QUERY_BASE, { queryId: 13, params });
 }
 
@@ -400,7 +401,7 @@ export async function apiUpdateRouterInterface(
     DESCRIZIONE: string;
     IP_ADDRESS: string;
     SUBNET_MASK: string;
-    ID_ACL: string | number | null; // presente nel modello ma NON usato per update
+    ID_ACL: string | number | null; // ID della ACL selezionata (includere nell'update)
     DEVICE_NAME: string;
     DATA_AGGIORNAMENTO?: string; // opzionale; se assente mettiamo now
     CONFIG_TESTO: string;
@@ -414,19 +415,23 @@ export async function apiUpdateRouterInterface(
   const p = payload;
   const vlanSedeId = (p as any).VLAN_SEDE_ID ?? (p as any).ASSOC_ID ?? null;
 
-  // Ordine richiesto senza ID_ACL:
+  // Ordine parametri (incluso ID_ACL):
   // VLAN_SEDE_ID, NOME_INTERFACCIA, DESCRIZIONE, IP_ADDRESS, SUBNET_MASK,
-  // DEVICE_NAME, CONFIG_TESTO, ID
+  // ID_ACL, DEVICE_NAME, CONFIG_TESTO, ID
+
   const params = toParams([
     vlanSedeId,
     p.NOME_INTERFACCIA,
     p.DESCRIZIONE,
     p.IP_ADDRESS,
     p.SUBNET_MASK,
+    (p as any).ID_ACL ?? null,
     p.DEVICE_NAME,
     p.CONFIG_TESTO,
     idOrParams,
   ]);
+
+  console.log(params)
   return http.post(QUERY_BASE, { queryId: 25, params });
 }
 

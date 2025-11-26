@@ -36,12 +36,11 @@
         @blur="onBlur"
         @paste="onPaste"
       >
-        <template v-if="as === 'select'">
+        <!-- <template v-if="as == 'select'">
           <slot />
-        </template>
+        </template> -->
       </component>
 
-      <!-- Floating label (Material style) -->
       <label
         v-if="floating && (resolvedTag == 'input' || resolvedTag == 'textarea') && (label || $slots.label)"
         :for="cid"
