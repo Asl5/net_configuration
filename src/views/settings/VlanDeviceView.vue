@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="min-h-screen h-dvh w-full flex flex-col bg-gray-50">
     <BaseHeader title="VLAN Device View" />
 
@@ -191,7 +191,8 @@ const groupedVlans = computed(() => {
   const map = new Map<string, Vlan[]>();
   const order: string[] = [];
   for (const v of vlanList.value) {
-    const key = vlanGroupKey(v);
+    const key =  v.ID_VLAN;
+    console.log(key)
     if (!map.has(key)) {
       map.set(key, []);
       order.push(key);
@@ -244,9 +245,27 @@ const devices = ref<DeviceRow[]>([]);
 const toInsert = ref<VlanDevice[]>([]);
 const toUpdate = ref<{ old: VlanDevice; new: VlanDevice }[]>([]);
 const toDelete = ref<VlanDevice[]>([]);
+// Dirty state also includes typing in new (unsaved) rows
+const newInputDirty = ref(false);
 const isDirty = computed(
-  () => toInsert.value.length + toUpdate.value.length + toDelete.value.length > 0
+  () => toInsert.value.length + toUpdate.value.length + toDelete.value.length > 0 || newInputDirty.value
 );
+
+// Consider a row meaningful for insert only if key fields have content
+function hasMeaningfulContent(d: VlanDevice): boolean {
+  const keyFields: (keyof VlanDevice)[] = [
+    'SERIALE', 'HOST_NAME', 'PORTA', 'IP',
+  ];
+  return keyFields.some((k) => String((d as any)[k] ?? '').trim().length > 0);
+}
+
+// Any field content (used to show unsaved badge as soon as user types)
+function hasAnyFieldContent(d: VlanDevice): boolean {
+  const fields: (keyof VlanDevice)[] = [
+    'STANZA','DESCRIZIONE','SERIALE','HOST_NAME','PORTA','IP','FORNITORE','NOTE','STATO',
+  ];
+  return fields.some((k) => String((d as any)[k] ?? '').trim().length > 0);
+}
 
 function rowKey(d: Partial<VlanDevice>) {
   return [
@@ -260,13 +279,16 @@ function rowKey(d: Partial<VlanDevice>) {
 
 async function reloadVlans() {
   const { data } = await apiLoadVlans();
+  console.log(data)
   const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
+  console.log(rows)
   vlanList.value = rows.map((r: any, i: number) => ({
     ID: r.ID ?? i,
     ID_VLAN: r.ID_VLAN ?? "",
     NOME_VLAN: r.NOME_VLAN ?? "",
     DESCRIZIONE: r.DESCRIZIONE ?? "",
   }));
+  console.log(vlanList)
   if (vlanList.value.length && !selectedVlan.value) onVlanClick(vlanList.value[0]);
 }
 
@@ -313,6 +335,11 @@ async function loadDevices() {
       } as any;
     };
     devices.value = rows.map(mapRow);
+    // If no devices exist for this VLAN, create a default empty row
+    // and mark it as a new (unsaved) entry so it isn't treated as existing.
+    if (devices.value.length === 0) {
+      addRow();
+    }
   } finally {
     loading.value = false;
   }
@@ -375,6 +402,7 @@ watch(
   devices,
   () => {
     const newInserts: VlanDevice[] = [];
+    let anyNewInputs = false;
     for (const row of devices.value) {
       const orig = row.__meta?.original;
       const current: VlanDevice = {
@@ -391,9 +419,16 @@ watch(
         STATO: row.STATO,
       } as any;
       (current as any).ID_DEVICE = (row as any).ID_DEVICE ?? null;
-      const isNew = row.__meta?.status === "new";
-      if (isNew) {
-        newInserts.push({ ...current, ID_VLAN: String(current.ID_VLAN) });
+      // Consider as NEW if explicitly marked or missing backend id
+      const looksNew = row.__meta?.status === "new" || !(row as any).ID_DEVICE;
+      if (looksNew) {
+        if (row.__meta) row.__meta.status = "new"; else (row as any).__meta = { status: "new", original: JSON.parse(JSON.stringify(current)) } as any;
+        // Unsaved indicator: any field typed in new row
+        if (hasAnyFieldContent(current)) anyNewInputs = true;
+        // Only consider for insert if key fields have content
+        if (hasMeaningfulContent(current)) {
+          newInserts.push({ ...current, ID_VLAN: String(current.ID_VLAN) });
+        }
         continue;
       }
       if (!orig) continue;
@@ -411,6 +446,7 @@ watch(
       }
     }
     toInsert.value = newInserts;
+    newInputDirty.value = anyNewInputs;
   },
   { deep: true, flush: "post" }
 );
@@ -443,23 +479,27 @@ async function saveAll() {
       },
     };
 
-    // Deletes
+    console.log(toInsert)
+    console.log(toUpdate)
+
+    // Deletes (endpoint expects VLAN primary key)
     for (const d of toDelete.value) {
-      console.log(d)
+      console.log(d);
       await apiDeleteVlanDevice({
-        ID_VLAN: d.ID
+        ID_VLAN: String(selectedVlan.value!.ID),
       });
     }
-    // Inserts
+    // Inserts (first param must be VLAN primary key)
     for (const d of toInsert.value) {
-      await apiInsertVlanDevice({ ...d });
+      console.log(d);
+      await apiInsertVlanDevice({ ...d, ID: String(selectedVlan.value!.ID) });
     }
     // Updates
 
     console.log("[VlanDeviceView] SAVE PREVIEW", preview);
     // Early return: do not call endpoints for now
     for (const u of toUpdate.value) {
-      await apiUpdateVlanDevice({ ...u.new });
+      await apiUpdateVlanDevice({ ...u.new, ID_VLAN: String(selectedVlan.value!.ID) });
     }
 
     await loadDevices();
@@ -491,7 +531,8 @@ const deleteMessage = computed(() => {
   const d = devices.value[deleteIndex.value];
   if (!d) return "Sei sicuro di voler eliminare la riga?";
   const parts = [d.HOST_NAME, d.SERIALE, d.IP].filter(Boolean);
-  const what = parts.length ? parts.join(" · ") : "questa riga";
+  const what = parts.length ? parts.join(" Â· ") : "questa riga";
   return `Sei sicuro di voler eliminare ${what}?`;
 });
 </script>
+

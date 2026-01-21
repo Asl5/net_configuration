@@ -452,16 +452,26 @@ function importFromPaste() {
   const t = pasteText.value || "";
   if (!t.trim().length) return;
   // Supporta righe 'access-list <num> ...' e righe 'permit/deny ...' (ACL named)
+  // Gestisce anche numerazione iniziale ("10 permit ...") e counters finali ("(123 matches)")
   const prepared: string[] = [];
   const raw = t
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter((l) => l.length);
 
-  for (const l of raw) {
+  for (let l of raw) {
+    // salta intestazioni ACL e remark
     if (/^ip\s+access-list\b/i.test(l) || /^exit\b/i.test(l) || /^remark\b/i.test(l)) continue;
-    if (/^access-list\s+/i.test(l)) prepared.push(l);
-    else if (/^(permit|deny)\b/i.test(l)) prepared.push(`access-list ${aclNum} ${l}`);
+    // rimuovi contatori finali "(xxxx matches)"
+    l = l.replace(/\(\s*\d+\s+matches\s*\)\s*$/i, "").trim();
+    // rimuovi numerazione di sequenza iniziale (es: "10 permit ...")
+    l = l.replace(/^\d+\s+/, "");
+
+    if (/^access-list\s+/i.test(l)) {
+      prepared.push(l);
+    } else if (/^(permit|deny)\b/i.test(l)) {
+      prepared.push(`access-list ${aclNum} ${l}`);
+    }
   }
 
   const normKey = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
@@ -470,9 +480,137 @@ function importFromPaste() {
     const normalized = line.trim().replace(/\s+/g, " ");
     const key = normKey(normalized);
     if (existing.has(key)) continue;
-    aclRules.value.push({ ID: null, ACL_ID: aclNum, ESTESA: normalized, SPIEGAZIONE: "" });
+    const info = buildExplanationFromExtended(normalized);
+    aclRules.value.push({
+      ID: null,
+      ACL_ID: aclNum,
+      ESTESA: normalized,
+      SPIEGAZIONE: info,
+    });
     existing.add(key);
   }
+}
+
+// Crea una spiegazione di massima a partire dalla regola estesa
+function buildExplanationFromExtended(estesa: string): string {
+  try {
+    const parts = parseExtended(estesa);
+    if (!parts) return "";
+    const action = parts.action === "permit" ? "Consenti" : "Nega";
+    const proto = parts.proto.toLowerCase();
+    const src = humanizeAddr(parts.src);
+    const dst = humanizeAddr(parts.dst);
+    const port = humanizePort(proto, parts.portDst);
+    if (proto === "ip" || !port) return `${action} ${proto} da ${src} a ${dst}`;
+    return `${action} ${proto} da ${src} a ${dst} porta ${port}`;
+  } catch {
+    return "";
+  }
+}
+
+function parseExtended(line: string):
+  | {
+      action: string;
+      proto: string;
+      src: string;
+      dst: string;
+      portDst: string | null;
+    }
+  | null {
+  const m = /^access-list\s+(\S+)\s+(permit|deny)\s+(\S+)\s+(.+)$/i.exec(line.trim());
+  if (!m) return null;
+  const action = m[2].toLowerCase();
+  const proto = m[3].toLowerCase();
+  const rest = m[4];
+
+  const tokens = rest.trim().split(/\s+/);
+  let i = 0;
+
+  const parseAddr = (): string | null => {
+    if (i >= tokens.length) return null;
+    if (tokens[i].toLowerCase() === "host") {
+      if (i + 1 >= tokens.length) return null;
+      const addr = `host ${tokens[i + 1]}`;
+      i += 2;
+      return addr;
+    }
+    if (tokens[i].toLowerCase() === "any") {
+      i += 1;
+      return "any";
+    }
+    if (i + 1 < tokens.length) {
+      const ip = tokens[i];
+      const wc = tokens[i + 1];
+      i += 2;
+      return `${ip} ${wc}`;
+    }
+    return null;
+  };
+
+  const src = parseAddr();
+  if (!src) return null;
+  // opzionale porta sorgente
+  if (tokens[i]?.toLowerCase() === "eq" && i + 1 < tokens.length) i += 2;
+
+  const dst = parseAddr();
+  if (!dst) return null;
+
+  let portDst: string | null = null;
+  if (tokens[i]?.toLowerCase() === "eq" && i + 1 < tokens.length) {
+    portDst = tokens[i + 1] ?? null;
+    i += 2;
+  }
+
+  return { action, proto, src, dst, portDst };
+}
+
+function humanizeAddr(a: string): string {
+  const s = a.trim().toLowerCase();
+  if (s === "any") return "qualsiasi";
+  if (s.startsWith("host ")) return a; // es: "host 1.2.3.4"
+  // formato "ip wildcard": converte in CIDR se possibile
+  const m = /^(\d+\.\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+\.\d+)$/.exec(a);
+  if (!m) return a;
+  const ip = m[1];
+  const wc = m[2];
+  const nm = wildcardToNetmask(wc);
+  const cidr = netmaskToPrefix(nm);
+  return `${ip}/${cidr}`;
+}
+
+function wildcardToNetmask(wc: string): string {
+  const oct = wc.split(".").map((x) => Math.max(0, Math.min(255, 255 - Number(x || 0))));
+  return oct.join(".");
+}
+
+function netmaskToPrefix(nm: string): number {
+  const bits = nm
+    .split(".")
+    .map((o) => Number(o) & 255)
+    .map((n) => n.toString(2).padStart(8, "0"))
+    .join("");
+  return (bits.match(/1/g) || []).length;
+}
+
+function humanizePort(proto: string, p: string | null): string {
+  if (!p || proto === "ip") return "";
+  const map: Record<string, string> = {
+    // comuni
+    "80": "80 (HTTP)",
+    "www": "80 (HTTP)",
+    "443": "443 (HTTPS)",
+    "389": "389 (LDAP)",
+    "88": "88 (Kerberos)",
+    "135": "135 (MS RPC)",
+    "445": "445 (SMB)",
+    "3389": "3389 (RDP)",
+    "9100": "9100 (JetDirect)",
+    "lpd": "515 (LPD)",
+    "domain": "53 (DNS)",
+    "ntp": "123 (NTP)",
+  };
+  const key = String(p).toLowerCase();
+  return map[key] || key;
 }
 
 // function parseCiscoAclConfig(text: string, aclNumber: string) {

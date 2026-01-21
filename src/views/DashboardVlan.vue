@@ -428,7 +428,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch, watchEffect } from "vue";
 import BaseHeader from "@/components/base/BaseHeader.vue";
 import BaseModal from "@/components/base/BaseModal.vue";
 import BaseButton from "@/components/base/BaseButton.vue";
@@ -506,6 +506,7 @@ async function loadDevicesForSelectedVlan(sede?: string) {
     return;
   }
   const { data } = await apiLoadDevicesForVlan(id).catch(() => ({ data: { rows: [] } }));
+  console.log(data)
   const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
   const base = sede ? rows.filter((r: any) => String(r.NOME_SEDE ?? '') === String(sede)) : rows;
   deviceRows.value = uniqDevices(base);
@@ -517,12 +518,19 @@ async function loadDevicesForSelectedVlan(sede?: string) {
 const deviceGroupKeys = computed(() => {
   const keys = new Set<string>();
   for (const r of rawRows.value) {
-
     const sede = String(r.NOME_SEDE ?? '');
     const name = String(r.NOME_VLAN ?? selectedVlan.value?.NOME_VLAN ?? '');
-    const assoc = String(
-      (r as any).ID_VLAN_SEQ ?? (r as any).VLAN_SEDE_ID ?? (r as any).ID_VAL ?? ''
-    );
+    // Preferisci l'associazione reale usata dai dispositivi (ID_VLAN_UNIQUE)
+    // Fallback: eventuali altri campi noti o composito ID_SEDE:ID_VLAN
+    const assocRaw =
+      (r as any).ID_VLAN_UNIQUE ??
+      (r as any).VLAN_SEDE_ID ??
+      (r as any).ID_VAL ??
+      (r as any).ID_VLAN_SEQ ??
+      (r?.ID_SEDE != null && r?.ID_VLAN != null
+        ? `${String(r.ID_SEDE)}:${String(r.ID_VLAN)}`
+        : '');
+    const assoc = String(assocRaw ?? '').trim();
     if (!assoc) {
       // Debug: manca l'ID di associazione nella riga
       console.warn('deviceGroupKeys: associazione assente per riga', { sede, name, row: r });
@@ -554,22 +562,56 @@ async function toggleDeviceGroup(key: string) {
       loadingDevice.value[key] = true;
       try {
         const id = (selectedVlan.value as any)?.ID ?? (selectedVlan.value as any)?.ID_VLAN;
-
+        console.groupCollapsed("[DEVICES] toggleDeviceGroup -> open", {
+          key,
+          parsed: parseDeviceKey(key),
+          selectedVlan: selectedVlan.value,
+          idForApi: id,
+        });
         if (id) {
           const { data } = await apiLoadDevicesForVlan(id).catch(() => ({ data: { rows: [] } }));
           const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
           const assocOf = (r: any) => String(r.ID_VLAN_UNIQUE ?? r.VLAN_SEDE_ID ?? r.ID_VAL ?? '');
 
-          // Filtra SOLO per associazione; se assente, non mostrare nulla per evitare duplicazioni
-          const filtered = assoc ? rows.filter((r: any) => assocOf(r) === assoc) : [];
+          console.info("[DEVICES] apiLoadDevicesForVlan(%s) -> rows: %d", String(id), rows.length);
+          let filtered: any[] = [];
+          if (assoc) {
+            if (assoc.includes(':')) {
+              // Fallback composito: ID_SEDE:ID_VLAN
+              const [sid, vid] = assoc.split(':');
+              filtered = rows.filter(
+                (r: any) => String(r.ID_SEDE ?? '') === sid && String(r.ID_VLAN ?? '') === vid
+              );
+              console.info(
+                "[DEVICES] filtro composito ID_SEDE:ID_VLAN = %s:%s -> %d",
+                sid,
+                vid,
+                filtered.length
+              );
+            } else {
+              filtered = rows.filter((r: any) => assocOf(r) === assoc);
+              console.info(
+                "[DEVICES] filtro per assoc ID_VLAN_UNIQUE/VLAN_SEDE_ID/ID_VAL = %s -> %d",
+                assoc,
+                filtered.length
+              );
+            }
+          }
           const deduped = uniqDevices(filtered);
+          console.info(
+            "[DEVICES] dedup -> %d (prima: %d)",
+            deduped.length,
+            filtered.length
+          );
 
           deviceRowsByGroup.value[key] = deduped;
         } else {
+          console.warn("[DEVICES] Nessun ID VLAN selezionato: skip chiamata API");
           deviceRowsByGroup.value[key] = [];
         }
       } finally {
         loadingDevice.value[key] = false;
+        console.groupEnd();
       }
     }
   }
@@ -684,6 +726,17 @@ async function selectVlan(v: any) {
   groupedRows.value = groupRowsForGrid(rawRows.value);
   // Precarica dispositivi per la tab dedicata
   loadDevicesForSelectedVlan();
+  // DEBUG: riassunto per capire le chiavi di raggruppamento disponibili
+  try {
+    const sedi = new Set<string>();
+    const vlanIds = new Set<string>();
+    for (const r of rawRows.value) {
+      if (r?.NOME_SEDE) sedi.add(String(r.NOME_SEDE));
+      if (r?.ID_VLAN != null) vlanIds.add(String(r.ID_VLAN));
+    }
+    console.info("[DEVICES] Selezionata VLAN -> sedi:%d ids:%d", sedi.size, vlanIds.size);
+    console.debug("[DEVICES] Esempio riga rawRows:", rawRows.value[0]);
+  } catch {}
 }
 
 function groupRowsForGrid(rows: any[]) {
@@ -965,4 +1018,32 @@ function onExportGrid(rows: any[]) {
     console.error('Export failed', e);
   }
 }
+
+/* ===== DEBUG UTILS ===== */
+// Espone alcune refs su window per ispezione da DevTools
+try {
+  (window as any)._dbgDevices = {
+    selectedVlan,
+    rawRows,
+    deviceGroupKeys,
+    expandedDeviceGroups,
+    deviceRowsByGroup,
+    loadingDevice,
+  };
+} catch {}
+
+// Log quando cambiano i gruppi dispositivi
+watchEffect(() => {
+  const keys = deviceGroupKeys.value;
+  console.info("[DEVICES] deviceGroupKeys (%d):", keys.length, keys);
+});
+
+// Log lo stato degli expanded ogni volta che cambia
+watch(
+  () => ({ ...expandedDeviceGroups.value }),
+  (val) => {
+    console.info("[DEVICES] expandedDeviceGroups:", val);
+  },
+  { deep: true }
+);
 </script>

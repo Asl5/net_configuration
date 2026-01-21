@@ -149,7 +149,7 @@ router.beforeEach(async (to) => {
   // isExpiringSoon(token, 0) è true quando exp <= now o token illeggibile
   if (!token || isExpiringSoon(token, 0)) {
     clearToken();
-    return { name: "login", query: { redirect: to.fullPath } };
+    return { name: "login" };
   }
 
   // Controllo ruoli richiesti (dopo validazione token)

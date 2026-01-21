@@ -150,7 +150,8 @@ export async function apiCreateSede(payload: {
 // VlanSettings APIs
 // Estrazione VLAN (queryId 12)
 export async function apiLoadVlans() {
-  return http.post(QUERY_BASE, { queryId: 12, params: [], maxRows: 1000 });
+  // Increase maxRows to ensure all VLANs are fetched
+  return http.post(QUERY_BASE, { queryId: 12, params: [], maxRows: 5000 });
 }
 
 // Inserimento VLAN (queryId 13)
@@ -617,6 +618,7 @@ export type VlanDevice = {
 
 // Select devices for a VLAN (queryId 32)
 export async function apiLoadVlanDevices(id: number | string) {
+  console.log("id",id)
   return http.post(QUERY_BASE, {
     queryId: 32,
     params: [{ index: 1, value: String(id) }],
@@ -627,6 +629,7 @@ export async function apiLoadVlanDevices(id: number | string) {
 // Insert ACL device (queryId 33)
 export async function apiInsertVlanDevice(d: VlanDevice) {
   const p = d;
+  console.log(p)
   return http.post(QUERY_BASE, {
     queryId: 33,
     params: [
@@ -648,6 +651,7 @@ export async function apiInsertVlanDevice(d: VlanDevice) {
 // Identified by composite key (ID_VLAN + SERIALE + HOST_NAME + PORTA + IP)
 export async function apiUpdateVlanDevice( d: VlanDevice) {
   const p = d;
+  console.log(p)
   return http.post(QUERY_BASE, {
     queryId: 34,
     params: [

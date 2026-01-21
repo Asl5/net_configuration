@@ -53,20 +53,43 @@
               </BaseButton>
             </div>
 
-            <div class="grid grid-cols-12 gap-4 items-start">
-              <div class="col-span-4 space-y-5">
-                <BaseInput :floating="true" v-model="selectedVlan.NOME_VLAN" label="Nome VLAN" size="md" />
-                <BaseInput v-model="selectedVlan.REFERENTE!" label="Referente" />
-              </div>
-              <div class="col-span-8">
-                <BaseTextArea
-                  v-model="selectedVlan.DESCRIZIONE"
-                  label="Descrizione"
-                  placeholder="Descrizione"
-                  class="w-full resize-y min-h-24"
-                />
+          <div class="grid grid-cols-12 gap-4 items-start">
+            <div class="col-span-4 space-y-5">
+              <BaseInput :floating="true" v-model="selectedVlan.NOME_VLAN" label="Nome VLAN" size="md" />
+              <BaseInput v-model="selectedVlan.REFERENTE!" label="Referente" />
+            </div>
+            <div class="col-span-8">
+              <BaseTextArea
+                v-model="selectedVlan.DESCRIZIONE"
+                label="Descrizione"
+                placeholder="Descrizione"
+                class="w-full resize-y min-h-24"
+              />
+            </div>
+          </div>
+
+          <!-- Sedi associate (solo visualizzazione) -->
+          <div class="mt-4">
+            <h3 class="text-md font-semibold text-gray-800">Sedi associate</h3>
+            <div v-if="vlanAssociations.length === 0" class="text-sm text-gray-500">
+              Nessuna sede associata.
+            </div>
+            <div v-else class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div
+                v-for="(a, i) in vlanAssociations"
+                :key="`${a.ID_SEDE}-${i}`"
+                class="border rounded p-2 bg-gray-50"
+              >
+                <div class="font-medium text-gray-700">{{ getSedeLabel(a.ID_SEDE) }}</div>
+                <div class="text-xs text-gray-600 space-x-2">
+                  <span v-if="a.SUBNET">Subnet: {{ a.SUBNET }}</span>
+                  <span v-if="a.GATEWAY">Gateway: {{ a.GATEWAY }}</span>
+                  <span v-if="a.IP_START && a.IP_END">Range: {{ a.IP_START }} - {{ a.IP_END }}</span>
+                </div>
+                <div v-if="a.NOTE" class="text-xs text-gray-500 mt-1">Note: {{ a.NOTE }}</div>
               </div>
             </div>
+          </div>
 
             <div class="flex mt-4 md:justify-end">
               <BaseButton size="sm" variant="primary" @click="save">Salva</BaseButton>
@@ -315,6 +338,20 @@ const associationForVlanId = ref<number | null>(null);
 const associationForVlanIdNumber = ref<string | null>(null);
 const sediOptions = ref<{ label: string; value: number }[]>([]);
 
+// Stato riassunto associazioni per la vista principale
+type AssocRow = {
+  ID_SEDE: number | null;
+  SUBNET: string;
+  MASK: string;
+  GATEWAY: string;
+  IP_START: string;
+  IP_END: string;
+  BROADCAST: string;
+  ID_ACL: number | null;
+  NOTE: string;
+};
+const vlanAssociations = ref<AssocRow[]>([]);
+
 /* ================== Computed ================== */
 const displayNome = computed(() => selectedVlan.value?.NOME_VLAN ?? "");
 
@@ -390,6 +427,8 @@ function selectVlan(v: Vlan) {
   selectedVlan.value = JSON.parse(JSON.stringify(v));
   originalVlan.value = JSON.parse(JSON.stringify(v));
   isDirty.value = false;
+  // Aggiorna riassunto associazioni
+  loadVlanAssociations();
 }
 
 /* ================== Cambio VLAN ================== */
@@ -449,6 +488,8 @@ async function openAssociateModal(v: Vlan) {
   } else {
     associationForms.value = [getEmptyAssocForm()];
   }
+  // Carica anche il riassunto per la vista principale
+  await loadVlanAssociations();
 }
 
 async function loadSediOptions(force = false) {
@@ -463,6 +504,47 @@ async function loadSediOptions(force = false) {
     }))
     .filter((o: { value: unknown }) => !Number.isNaN(o.value));
 
+}
+
+// Helper per mostrare l'etichetta della sede
+function getSedeLabel(id: number | null): string {
+  if (id == null) return "Sede sconosciuta";
+  const opt = sediOptions.value.find((o) => o.value === id);
+  return opt?.label ?? `Sede ${id}`;
+}
+
+// Carica le associazioni della VLAN selezionata per il riassunto
+async function loadVlanAssociations() {
+  try {
+    if (!selectedVlan.value) {
+      vlanAssociations.value = [];
+      return;
+    }
+    // Allinea con la modale: usa l'ID record VLAN
+    const id = selectedVlan.value.ID;
+    if (!id) {
+      vlanAssociations.value = [];
+      return;
+    }
+    // Assicura di avere le etichette sedi per il mapping
+    await loadSediOptions();
+    const { data } = await apiLoadVlanSedi(id);
+    const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
+    vlanAssociations.value = rows.map((r: any) => ({
+      ID_SEDE: r.ID_SEDE != null ? Number(r.ID_SEDE) : (r.SEDE_ID != null ? Number(r.SEDE_ID) : null),
+      SUBNET: r.SUBNET ?? "",
+      MASK: r.MASK ?? "",
+      GATEWAY: r.GATEWAY ?? "",
+      IP_START: r.IP_START ?? "",
+      IP_END: r.IP_END ?? "",
+      BROADCAST: r.BROADCAST ?? "",
+      ID_ACL: r.ID_ACL != null ? Number(r.ID_ACL) : null,
+      NOTE: r.NOTE ?? "",
+    }));
+  } catch (e) {
+    console.error(e);
+    vlanAssociations.value = [];
+  }
 }
 
 // utils/ipTools.ts
@@ -581,7 +663,7 @@ async function confirmDeleteAssociation() {
       const { data } = await apiLoadVlanSedi(associationForVlanId.value);
       const rows = Array.isArray((data as any)?.rows) ? (data as any).rows : [];
       associationForms.value = rows.map((r: any) => ({
-        ID_SEDE: r.SEDE_ID != null ? Number(r.SEDE_ID) : null,
+        ID_SEDE: r.ID_SEDE != null ? Number(r.ID_SEDE) : (r.SEDE_ID != null ? Number(r.SEDE_ID) : null),
         SUBNET: r.SUBNET ?? "",
         MASK: r.MASK ?? "",
         GATEWAY: r.GATEWAY ?? "",
@@ -592,6 +674,8 @@ async function confirmDeleteAssociation() {
         NOTE: r.NOTE ?? "",
         isNew: false,
       }));
+      // Aggiorna riassunto
+      await loadVlanAssociations();
     }
   } finally {
     showDeleteAssocModal.value = false;
@@ -669,6 +753,8 @@ async function saveAllAssociations() {
     }));
     showAssociate.value = false;
     showAssocSavedModal.value = true;
+    // Aggiorna riassunto nella vista principale
+    await loadVlanAssociations();
   } catch (e) {
     console.error(e);
   }
@@ -720,6 +806,9 @@ async function create() {
 /* ================== Mount ================== */
 onMounted(async () => {
   await reload();
+  // Precarica opzioni sedi per mostrare etichette
+  await loadSediOptions();
+  await loadVlanAssociations();
 });
 
 /* ================== Conferma chiusura pagina ================== */
