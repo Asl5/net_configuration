@@ -252,7 +252,7 @@
                       :items="deviceRowsByGroup[key]"
                       :columns="deviceColumns"
                       :show-pagination="true"
-                      :page-size="10"
+                      :page-size="5"
                       bordered
                       sticky-header
                       y-max-height="calc(100vh-320px)"
@@ -539,6 +539,18 @@ const deviceGroupKeys = computed(() => {
     // Chiave: assocId|sede|nome
     keys.add(`${assoc}|${sede}|${name}`);
   }
+  // Fallback: se non abbiamo trovato alcun gruppo, creane uno generico per la VLAN selezionata
+  if (keys.size === 0 && selectedVlan.value) {
+    const name = String(selectedVlan.value?.NOME_VLAN ?? '');
+    const sede = '';
+    const assoc = '';
+    const k = `${assoc}|${sede}|${name}`;
+    console.warn('[DEVICES] Nessun gruppo disponibile dalle rawRows; uso fallback per VLAN', {
+      selectedVlan: selectedVlan.value,
+      key: k,
+    });
+    keys.add(k);
+  }
   return Array.from(keys);
 });
 function parseDeviceKey(key: string) {
@@ -588,6 +600,15 @@ async function toggleDeviceGroup(key: string) {
                 vid,
                 filtered.length
               );
+              // Se il dataset non include ID_SEDE, ripiega su filtro per sola VLAN
+              if (filtered.length === 0) {
+                filtered = rows.filter((r: any) => String(r.ID_VLAN ?? '') === String(id));
+                console.warn(
+                  '[DEVICES] dataset senza ID_SEDE? fallback filtro per sola VLAN %s -> %d',
+                  String(id),
+                  filtered.length
+                );
+              }
             } else {
               filtered = rows.filter((r: any) => assocOf(r) === assoc);
               console.info(
@@ -595,7 +616,20 @@ async function toggleDeviceGroup(key: string) {
                 assoc,
                 filtered.length
               );
+              // Se il dataset non ha un campo di associazione, ripiega su filtro per sola VLAN
+              if (filtered.length === 0) {
+                filtered = rows.filter((r: any) => String(r.ID_VLAN ?? '') === String(id));
+                console.warn(
+                  '[DEVICES] dataset senza assocKey? fallback filtro per sola VLAN %s -> %d',
+                  String(id),
+                  filtered.length
+                );
+              }
             }
+          } else {
+            // Nessuna assoc nella chiave: mostra tutti i dispositivi per la VLAN
+            filtered = rows.filter((r: any) => String(r.ID_VLAN ?? '') === String(id));
+            console.warn('[DEVICES] chiave senza assoc; uso filtro per sola VLAN %s -> %d', String(id), filtered.length);
           }
           const deduped = uniqDevices(filtered);
           console.info(

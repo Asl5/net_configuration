@@ -211,11 +211,14 @@ const expandedKey = ref<string | null>(null);
 watch(
   () => [groupedVlans.value, selectedVlan.value?.ID_VLAN],
   () => {
-    // Apri il gruppo della VLAN selezionata, altrimenti il primo disponibile
-    if (selectedVlan.value) {
-      expandedKey.value = vlanGroupKey(selectedVlan.value);
-    } else if (!expandedKey.value && groupedVlans.value.length) {
-      expandedKey.value = groupedVlans.value[0].key;
+    // Non collassare i gruppi quando si seleziona una VLAN interna.
+    // Apri il gruppo solo se nessun gruppo è ancora aperto.
+    if (!expandedKey.value) {
+      if (selectedVlan.value) {
+        expandedKey.value = String(selectedVlan.value.ID_VLAN);
+      } else if (groupedVlans.value.length) {
+        expandedKey.value = groupedVlans.value[0].key;
+      }
     }
   },
   { immediate: true, deep: true }

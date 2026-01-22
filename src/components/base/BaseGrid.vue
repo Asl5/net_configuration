@@ -223,7 +223,10 @@
                           <tr
                             v-for="(r, ri) in row[expandField]"
                             :key="'er-' + ri"
-                            class="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                            :class="[
+                              zebra ? (ri % 2 === 0 ? zebraEvenClass : zebraOddClass) : '',
+                              'hover:bg-gray-50',
+                            ]"
                           >
                             <td
                               v-for="ec in expandColumnsResolved"
