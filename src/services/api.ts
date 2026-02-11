@@ -255,6 +255,7 @@ export async function apiUpdateVlanSede(payload: {
   NOTE: string | null;
 }) {
   const p = payload as any;
+  console.log(p)
   return http.post(QUERY_BASE, {
     queryId: 17,
     params: [

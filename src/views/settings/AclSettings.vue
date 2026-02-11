@@ -288,11 +288,12 @@ async function createAcl() {
     return;
   }
   const payload = {
-    NUMERO: Number(newAcl.NUMERO),
+    NUMERO: newAcl.NUMERO,
     DESCRIZIONE: newAcl.DESCRIZIONE,
     DIREZIONE: newAcl.DIREZIONE,
     TESTO_CONFIG: "",
   };
+  console.log(payload)
   await apiCreateAcl(payload);
   showAdd.value = false;
   showConfirm.value = true;

@@ -180,11 +180,11 @@ const pendingVlan = ref<Vlan | null>(null);
 const showDeleteModal = ref(false);
 const deleteIndex = ref<number | null>(null);
 
-function vlanGroupKey(v: Vlan): string {
-  const n = Number(v.ID_VLAN);
-  if (!Number.isNaN(n)) return String(Math.floor(n / 100));
-  return (v.NOME_VLAN?.[0] || "X").toUpperCase();
-}
+// function vlanGroupKey(v: Vlan): string {
+//   const n = Number(v.ID_VLAN);
+//   if (!Number.isNaN(n)) return String(Math.floor(n / 100));
+//   return (v.NOME_VLAN?.[0] || "X").toUpperCase();
+// }
 
 // Alterna i gruppi: blocchi contigui ottengono bg bianco / grigio-200
 const groupedVlans = computed(() => {

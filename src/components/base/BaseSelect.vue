@@ -14,6 +14,7 @@
           class="border rounded-lg text-sm bg-white shadow-sm py-2 pl-3 pr-10 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full h-10 flex items-center"
           @focus="isFocused = true"
           @blur="isFocused = false"
+          ref="triggerEl"
         >
           <span v-if="selectedOption" class="truncate text-gray-900">
             {{ selectedOption.label }}
@@ -47,24 +48,28 @@
           </span>
         </button>
 
-        <!-- Dropdown -->
-        <div
-          v-if="open"
-          class="absolute z-50 mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-auto w-full"
-        >
-          <label
-            v-for="opt in options"
-            :key="opt.value"
-            class="block px-3 py-2 cursor-pointer hover:bg-gray-50 text-gray-900 text-sm"
-            @click="selectOption(opt)"
+        <!-- Dropdown (teleported to either modal portal or body) -->
+        <teleport :to="teleportTarget">
+          <div
+            v-if="open"
+            :style="dropdownStyle"
+            class="fixed z-50 bg-white border rounded-lg shadow-lg overflow-auto"
+            ref="dropdownEl"
           >
-            {{ opt.label }}
-          </label>
+            <label
+              v-for="opt in options"
+              :key="opt.value"
+              class="block px-3 py-2 cursor-pointer hover:bg-gray-50 text-gray-900 text-sm"
+              @click="selectOption(opt)"
+            >
+              {{ opt.label }}
+            </label>
 
-          <p v-if="!options.length" class="text-sm text-gray-400 px-3 py-2">
-            Nessuna opzione disponibile
-          </p>
-        </div>
+            <p v-if="!options.length" class="text-sm text-gray-400 px-3 py-2">
+              Nessuna opzione disponibile
+            </p>
+          </div>
+        </teleport>
       </div>
 
       <p v-if="help" class="mt-1 text-sm text-gray-500">{{ help }}</p>
@@ -73,10 +78,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount } from "vue";
+import { computed, ref, onMounted, onBeforeUnmount, nextTick, inject, type Ref } from "vue";
 
 type Option = { value: string | number; label: string };
-
+const modalScrollContainer = inject<Ref<HTMLElement | null>>(
+  "modalScrollContainer",
+  ref(null)
+)
 const props = withDefaults(
   defineProps<{
     modelValue: string | number | null;
@@ -107,9 +115,43 @@ const emit = defineEmits<{
 }>();
 
 const open = ref(false);
+const triggerEl = ref<HTMLElement | null>(null);
+const dropdownEl = ref<HTMLElement | null>(null);
+const teleportTarget = inject<string>('modalPortalTarget', 'body');
+
+const dropdownStyle = ref<{ top: string; left: string; width: string; maxHeight: string }>(
+  { top: "0px", left: "0px", width: "0px", maxHeight: "240px" }
+);
+
+function positionDropdown() {
+  const t = triggerEl.value;
+  if (!t) return;
+  const rect = t.getBoundingClientRect();
+  const viewportH = window.innerHeight;
+  const spaceBelow = viewportH - rect.bottom - 8; // 8px margin
+  const desiredMax = 240; // ~max-h-60
+  let topPx = rect.bottom + 4; // small gap
+  let maxH = Math.min(desiredMax, Math.max(120, spaceBelow));
+  // If not enough space below, try placing above
+  if (spaceBelow < 120) {
+    const spaceAbove = rect.top - 8;
+    if (spaceAbove > spaceBelow) {
+      maxH = Math.min(desiredMax, Math.max(120, spaceAbove));
+      topPx = Math.max(8, rect.top - maxH - 4);
+    }
+  }
+  dropdownStyle.value = {
+    top: `${Math.round(topPx)}px`,
+    left: `${Math.round(rect.left)}px`,
+    width: `${Math.round(rect.width)}px`,
+    maxHeight: `${Math.round(maxH)}px`,
+  };
+}
+
 function toggleOpen() {
   if (props.disabled) return;
   open.value = !open.value;
+  if (open.value) nextTick(positionDropdown);
 }
 function close() {
   open.value = false;
@@ -119,14 +161,39 @@ function selectOption(opt: Option) {
   close();
 }
 
-// chiudi se clicchi fuori
-function handleClickOutside(e: MouseEvent) {
-  if (!(e.target as HTMLElement).closest(".relative")) {
-    close();
-  }
+// Close on click outside and keep dropdown positioned on scroll/resize
+function handleGlobalClick(e: MouseEvent) {
+  const target = e.target as HTMLElement | null;
+  const insideTrigger = !!(triggerEl.value && target && triggerEl.value.contains(target));
+  const insideDropdown = !!(dropdownEl.value && target && dropdownEl.value.contains(target));
+  if (!insideTrigger && !insideDropdown) close();
 }
-onMounted(() => document.addEventListener("click", handleClickOutside));
-onBeforeUnmount(() => document.removeEventListener("click", handleClickOutside));
+function handleWindowEvents() {
+  if (open.value) positionDropdown();
+}
+function handleKey(e: KeyboardEvent) {
+  if (e.key === "Escape") close();
+}
+onMounted(() => {
+  document.addEventListener("click", handleGlobalClick);
+  // window.addEventListener("scroll", handleWindowEvents, true);
+  window.addEventListener("resize", handleWindowEvents);
+  window.addEventListener("keydown", handleKey); if (modalScrollContainer.value) {
+    modalScrollContainer.value.addEventListener("scroll", handleWindowEvents)
+  } else {
+    window.addEventListener("scroll", handleWindowEvents, true)
+  }
+});
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleGlobalClick);
+  // window.removeEventListener("scroll", handleWindowEvents, true);
+  window.removeEventListener("resize", handleWindowEvents);
+  window.removeEventListener("keydown", handleKey);  if (modalScrollContainer.value) {
+    modalScrollContainer.value.removeEventListener("scroll", handleWindowEvents)
+  } else {
+    window.removeEventListener("scroll", handleWindowEvents, true)
+  }
+});
 
 const selectedOption = computed(() =>
   props.options.find((o) => o.value === props.modelValue) || null

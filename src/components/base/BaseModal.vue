@@ -21,6 +21,7 @@
 
         <!-- Content -->
         <div
+        ref="scrollContainer"
           class="p-4 flex-1"
           :class="scrollable ? 'overflow-y-auto' : 'overflow-visible'"
         >
@@ -41,7 +42,10 @@
 
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, watch, computed, ref } from 'vue'
+import { provide  } from "vue"
 
+const scrollContainer = ref<HTMLElement | null>(null)
+provide("modalScrollContainer", scrollContainer)
 const props = withDefaults(
   defineProps<{
     modelValue: boolean

@@ -234,12 +234,13 @@
   </div>
 
   <!-- FOOTER FISSO -->
+   <template #footer>
   <div
-    class="sticky bottom-0 z-10 -mx-4 pt-2 pr-2 pb-0 flex justify-end gap-2 bg-gray-50 border-t border-gray-200"
+    class=" z-[70] -mx-4  pr-2 flex justify-end gap-2 "
   >
     <BaseButton variant="secondary" @click="closeAssociate">Chiudi</BaseButton>
     <BaseButton variant="primary" @click="saveAllAssociations">Salva</BaseButton>
-  </div>
+  </div></template>
 </BaseModal>
 
 
@@ -573,11 +574,13 @@ function calcNetworkDetails(subnet: string, maskInput?: string) {
       return cidr;
     };
 
-    // Accept formats: "ip/cidr", "ip" with optional maskInput, or default /24
+    // Accept formats: "ip/cidr" or "ip\\cidr"; or "ip" with optional maskInput
     let ipStr = subnet.trim();
     let cidrStr: string | undefined;
-    if (ipStr.includes("/")) {
-      [ipStr, cidrStr] = ipStr.split("/");
+    if (ipStr.includes("/") || ipStr.includes("\\")) {
+      const parts = ipStr.split(/[\/\\]/);
+      ipStr = parts[0] ?? ipStr;
+      cidrStr = parts[1];
     }
 
     const ipParts = ipStr.split(".").map((n) => Number(n));
@@ -713,7 +716,7 @@ async function saveAllAssociations() {
     for (const f of associationForms.value) {
 
       if (!associationForVlanId.value || !f.ID_SEDE) continue;
-
+console.log(f.SUBNET );
       // Calcolo dettagli rete al salvataggio
       const details = calcNetworkDetails(String(f.SUBNET ?? ""), String(f.MASK ?? ""));
       const payload = {
