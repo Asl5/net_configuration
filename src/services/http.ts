@@ -8,6 +8,8 @@ import { useRightsStore } from "@/stores/rights";
 export const http = axios.create({
   baseURL: `${API_BASE}`,
   withCredentials: true,
+  // Prevent indefinite hangs when backend blocks (e.g., DB pool wait)
+  timeout: 30000, // 30s to align with backend pool timeout
 });
 
 const REFRESH_HEADERS = { "X-Requested-By": "webapp" };

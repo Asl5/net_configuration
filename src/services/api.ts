@@ -42,12 +42,29 @@ export async function apiBatchCounts(queryId: number, paramLikes: string[]) {
 
 // Rights APIs
 export async function apiFetchRightsByMatricola(matricola: string) {
-
-  return http.post(QUERY_BASE, {
+  const req = {
     queryId: 1,
     params: [{ index: 1, value: matricola }],
     maxRows: 1000,
-  });
+  } as const;
+
+console.log(req)
+
+  const startedAt = Date.now();
+  try {
+    console.debug("[apiFetchRightsByMatricola] → POST", { url: QUERY_BASE, body: req });
+    const res = await http.post(QUERY_BASE, req);
+    const durationMs = Date.now() - startedAt;
+    const rowsCount = Array.isArray((res as any)?.data?.rows) ? (res as any).data.rows.length : undefined;
+    console.debug("[apiFetchRightsByMatricola] ← Response", { status: res.status, durationMs, rowsCount });
+    return res;
+  } catch (err: any) {
+    const durationMs = Date.now() - startedAt;
+    const status = err?.response?.status;
+    const data = err?.response?.data;
+    console.error("[apiFetchRightsByMatricola] ✖ Error", { durationMs, status, message: err?.message, data });
+    throw err;
+  }
 }
 
 // UsersSettings APIs
